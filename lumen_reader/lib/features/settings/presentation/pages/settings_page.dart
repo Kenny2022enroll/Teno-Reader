@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/sync/sync_service.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../reader/infrastructure/book_repository.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../reader/domain/entities/reading_entities.dart';
+import '../../../reader/infrastructure/book_repository.dart';
+import '../../../reader/presentation/pages/reader_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});

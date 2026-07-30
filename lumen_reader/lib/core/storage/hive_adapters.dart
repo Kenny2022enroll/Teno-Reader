@@ -3,8 +3,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../features/reader/domain/entities/book_entity.dart';
 import '../../features/reader/domain/entities/reading_entities.dart';
 
-part 'storage_constants.dart';
-
 class BookAdapter extends TypeAdapter<BookEntity> {
   @override
   final int typeId = 1;

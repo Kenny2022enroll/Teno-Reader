@@ -1,13 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../domain/entities/book_entity.dart';
-import '../../domain/entities/reading_entities.dart';
-import '../../domain/repositories/book_repository.dart';
-import '../../infrastructure/epub_parser.dart';
-import '../../infrastructure/pdf_parser.dart';
-import '../storage/storage_service.dart';
+import '../domain/entities/book_entity.dart';
+import '../domain/entities/reading_entities.dart';
+import '../domain/repositories/book_repository.dart';
+import '../../../core/storage/storage_service.dart';
+import 'epub_parser.dart';
+import 'pdf_parser.dart';
 
 final bookRepositoryProvider = Provider<BookRepository>((ref) {
   final storage = ref.watch(storageServiceProvider);

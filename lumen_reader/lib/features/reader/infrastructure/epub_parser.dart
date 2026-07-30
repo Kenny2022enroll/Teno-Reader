@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
 
-import '../../domain/repositories/book_repository.dart';
+import '../domain/repositories/book_repository.dart';
 
 /// Lightweight EPUB metadata / content extractor.
 /// Full rendering is delegated to a dedicated epub widget in production;
