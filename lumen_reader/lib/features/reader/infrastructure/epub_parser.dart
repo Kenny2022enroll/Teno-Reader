@@ -47,7 +47,7 @@ class EpubParser {
       final dir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
       final file = archive.findFile('$dir$coverHref');
       if (file != null) {
-        final tmp = await File(
+        final tmp = File(
           '${Directory.systemTemp.path}/lumen_cover_${DateTime.now().millisecondsSinceEpoch}.jpg',
         );
         tmp.writeAsBytesSync(file.content as Uint8List);

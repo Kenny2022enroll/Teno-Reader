@@ -35,11 +35,17 @@ class StorageService {
     await books.delete(id);
     await progress.delete(id);
     final hs = highlights.values.where((h) => h.bookId == id).toList();
-    for (final h in hs) await highlights.delete(h.id);
+    for (final h in hs) {
+      await highlights.delete(h.id);
+    }
     final bms = bookmarks.values.where((b) => b.bookId == id).toList();
-    for (final b in bms) await bookmarks.delete(b.id);
+    for (final b in bms) {
+      await bookmarks.delete(b.id);
+    }
     final ans = annotations.values.where((a) => a.bookId == id).toList();
-    for (final a in ans) await annotations.delete(a.id);
+    for (final a in ans) {
+      await annotations.delete(a.id);
+    }
   }
 
   // MARK: - Secure

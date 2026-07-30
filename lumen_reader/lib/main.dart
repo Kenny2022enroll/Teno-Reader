@@ -27,7 +27,7 @@ Future<void> main() async {
     Hive.registerAdapter(AnnotationAdapter());
     Hive.registerAdapter(SettingsPayloadAdapter());
 
-    await Hive.openBox<Book>(kBooksBoxName);
+    await Hive.openBox<BookEntity>(kBooksBoxName);
     await Hive.openBox<ReadingProgress>(kProgressBoxName);
     await Hive.openBox<Highlight>(kHighlightBoxName);
     await Hive.openBox<Bookmark>(kBookmarkBoxName);

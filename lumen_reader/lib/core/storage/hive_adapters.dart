@@ -13,13 +13,15 @@ class BookAdapter extends TypeAdapter<BookEntity> {
       id: reader.readString(),
       title: reader.readString(),
       author: reader.readString(),
-      coverPath: reader.readStringNullable(),
-      description: reader.readStringNullable(),
+      coverPath: reader.readBool() ? reader.readString() : null,
+      description: reader.readBool() ? reader.readString() : null,
       filePath: reader.readString(),
       format: reader.readString(),
       totalWords: reader.readInt(),
-      addedAt: reader.readDateTime(),
-      lastReadAt: reader.readDateTimeNullable(),
+      addedAt: DateTime.fromMillisecondsSinceEpoch(reader.readInt()),
+      lastReadAt: reader.readBool()
+          ? DateTime.fromMillisecondsSinceEpoch(reader.readInt())
+          : null,
       isPinned: reader.readBool(),
     );
   }
@@ -29,13 +31,18 @@ class BookAdapter extends TypeAdapter<BookEntity> {
     writer.writeString(obj.id);
     writer.writeString(obj.title);
     writer.writeString(obj.author);
-    writer.writeStringNullable(obj.coverPath);
-    writer.writeStringNullable(obj.description);
+    writer.writeBool(obj.coverPath != null);
+    if (obj.coverPath != null) writer.writeString(obj.coverPath!);
+    writer.writeBool(obj.description != null);
+    if (obj.description != null) writer.writeString(obj.description!);
     writer.writeString(obj.filePath);
     writer.writeString(obj.format);
     writer.writeInt(obj.totalWords ?? 0);
-    writer.writeDateTime(obj.addedAt);
-    writer.writeDateTimeNullable(obj.lastReadAt);
+    writer.writeInt(obj.addedAt.millisecondsSinceEpoch);
+    writer.writeBool(obj.lastReadAt != null);
+    if (obj.lastReadAt != null) {
+      writer.writeInt(obj.lastReadAt!.millisecondsSinceEpoch);
+    }
     writer.writeBool(obj.isPinned);
   }
 }
@@ -51,7 +58,7 @@ class ReadingProgressAdapter extends TypeAdapter<ReadingProgress> {
         progress: r.readDouble(),
         scrollOffset: r.readInt(),
         totalWordsRead: r.readInt(),
-        updatedAt: r.readDateTime(),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
       );
 
   @override
@@ -61,7 +68,7 @@ class ReadingProgressAdapter extends TypeAdapter<ReadingProgress> {
     w.writeDouble(obj.progress);
     w.writeInt(obj.scrollOffset);
     w.writeInt(obj.totalWordsRead);
-    w.writeDateTime(obj.updatedAt);
+    w.writeInt(obj.updatedAt.millisecondsSinceEpoch);
   }
 }
 
@@ -78,7 +85,7 @@ class HighlightAdapter extends TypeAdapter<Highlight> {
         startOffset: r.readInt(),
         endOffset: r.readInt(),
         color: r.readString(),
-        createdAt: r.readDateTime(),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
       );
 
   @override
@@ -90,7 +97,7 @@ class HighlightAdapter extends TypeAdapter<Highlight> {
     w.writeInt(obj.startOffset);
     w.writeInt(obj.endOffset);
     w.writeString(obj.color);
-    w.writeDateTime(obj.createdAt);
+    w.writeInt(obj.createdAt.millisecondsSinceEpoch);
   }
 }
 
@@ -105,7 +112,7 @@ class BookmarkAdapter extends TypeAdapter<Bookmark> {
         chapterId: r.readString(),
         scrollOffset: r.readInt(),
         snippet: r.readString(),
-        createdAt: r.readDateTime(),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
       );
 
   @override
@@ -115,7 +122,7 @@ class BookmarkAdapter extends TypeAdapter<Bookmark> {
     w.writeString(obj.chapterId);
     w.writeInt(obj.scrollOffset);
     w.writeString(obj.snippet);
-    w.writeDateTime(obj.createdAt);
+    w.writeInt(obj.createdAt.millisecondsSinceEpoch);
   }
 }
 
@@ -131,8 +138,10 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
         anchorText: r.readString(),
         offset: r.readInt(),
         note: r.readString(),
-        createdAt: r.readDateTime(),
-        updatedAt: r.readDateTimeNullable(),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+        updatedAt: r.readBool()
+            ? DateTime.fromMillisecondsSinceEpoch(r.readInt())
+            : null,
       );
 
   @override
@@ -143,8 +152,11 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
     w.writeString(obj.anchorText);
     w.writeInt(obj.offset);
     w.writeString(obj.note);
-    w.writeDateTime(obj.createdAt);
-    w.writeDateTimeNullable(obj.updatedAt);
+    w.writeInt(obj.createdAt.millisecondsSinceEpoch);
+    w.writeBool(obj.updatedAt != null);
+    if (obj.updatedAt != null) {
+      w.writeInt(obj.updatedAt!.millisecondsSinceEpoch);
+    }
   }
 }
 

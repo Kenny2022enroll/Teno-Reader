@@ -42,7 +42,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   final List<double> _chapterOffsets = [];
   int _currentChapter = 0;
   double _currentProgress = 0;
-  bool _showControls = true;
+  final bool _showControls = true;
   bool _isPlayingTts = false;
 
   @override
@@ -64,12 +64,12 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Future<void> _initTts() async {
     await _tts.setLanguage('en-US');
-    await _tts.setCompletionHandler(() => _onTtsComplete());
+    _tts.setCompletionHandler(_onTtsComplete);
   }
 
   Future<void> _loadBook() async {
     final bookAsync = ref.read(readerBookProvider(widget.bookId));
-    final book = await bookAsync.valueOrNull;
+    final book = bookAsync.valueOrNull;
     if (book == null) return;
 
     final progressRepo = ref.read(progressRepositoryProvider);
@@ -87,7 +87,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       if (_currentChapter == -1) _currentChapter = 0;
       _currentProgress = saved.progress;
       if (_scrollCtrl.hasClients) {
-        _scrollCtrl.jumpTo(saved.scrollOffset);
+        _scrollCtrl.jumpTo(saved.scrollOffset.toDouble());
       }
     }
 
@@ -131,7 +131,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     _lastSave = now;
 
     final bookAsync = ref.read(readerBookProvider(widget.bookId));
-    final book = await bookAsync.valueOrNull;
+    final book = bookAsync.valueOrNull;
     if (book == null) return;
 
     final repo = ref.read(progressRepositoryProvider);
@@ -480,7 +480,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Future<void> _addBookmark() async {
     final bookAsync = ref.read(readerBookProvider(widget.bookId));
-    final book = await bookAsync.valueOrNull;
+    final book = bookAsync.valueOrNull;
     if (book == null) return;
     final repo = ref.read(progressRepositoryProvider);
     final bm = await repo.addBookmark(
@@ -630,8 +630,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
-  Widget _buildHighlightList() =>
-      const _PlaceholderList(icon: Icons.format_color_highlight);
+  Widget _buildHighlightList() => const _PlaceholderList(icon: Icons.highlight);
   Widget _buildAnnotationList() => const _PlaceholderList(icon: Icons.notes);
   Widget _buildBookmarkList() => const _PlaceholderList(icon: Icons.bookmark);
 
@@ -646,7 +645,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           children: [
             _SteppedRow(
               label: '字号',
-              value: settings.fontSize.round(),
+              value: settings.fontSize,
               min: 12,
               max: 28,
               onChanged: (v) async {

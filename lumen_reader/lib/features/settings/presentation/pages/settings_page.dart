@@ -17,7 +17,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final settingsAsync = ref.watch(readerSettingsProvider);
 
     return Scaffold(
@@ -161,13 +160,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              _Section(
+              const _Section(
                 title: '关于',
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.info_outline),
-                    title: const Text('Lumen Reader'),
-                    subtitle: const Text('v1.0.0 · 跨平台阅读'),
+                    leading: Icon(Icons.info_outline),
+                    title: Text('Lumen Reader'),
+                    subtitle: Text('v1.0.0 · 跨平台阅读'),
                   ),
                 ],
               ),
