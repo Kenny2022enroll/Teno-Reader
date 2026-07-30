@@ -1,0 +1,200 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_CHANNEL: stable
+  WORK_DIR: lumen_reader
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: lumen_reader
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: android-apk
+            runner: ubuntu-latest
+          - target: android-aab
+            runner: ubuntu-latest
+          - target: ios
+            runner: macos-latest
+          - target: macos
+            runner: macos-latest
+          - target: windows
+            runner: windows-latest
+          - target: linux
+            runner: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # ------------------------------------------------------------------ Linux
+      - name: Install Linux build deps
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev clang cmake pkg-config
+
+      # ---------------------------------------------------------------- Android
+      - name: Build Android APK
+        if: matrix.target == 'android-apk'
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build Android App Bundle
+        if: matrix.target == 'android-aab'
+        run: flutter build appbundle --release
+
+      # ------------------------------------------------------------------- iOS
+      - name: Build iOS (no codesign)
+        if: matrix.target == 'ios'
+        run: flutter build ios --release --no-codesign --simulator
+
+      - name: Archive iOS build
+        if: matrix.target == 'ios'
+        run: |
+          mkdir -p ../artifacts
+          cd build/ios/iphoneos || cd build/ios/iphonesimulator
+          zip -rq ../../../artifacts/ios-build.zip .
+          cd -
+          cp -r build/ios/iphoneos ../artifacts/ios-build-output 2>/dev/null || true
+
+      # ------------------------------------------------------------------- macOS
+      - name: Build macOS
+        if: matrix.target == 'macos'
+        run: flutter build macos --release
+
+      - name: Archive macOS app
+        if: matrix.target == 'macos'
+        run: |
+          mkdir -p ../artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/macos/Build/Products/Release/*.app \
+            ../artifacts/macos-app.zip
+
+      # ---------------------------------------------------------------- Windows
+      - name: Build Windows
+        if: matrix.target == 'windows'
+        run: flutter build windows --release
+
+      - name: Archive Windows build
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $src = "build\windows\x64\runner\Release"
+          if (-not (Test-Path $src)) {
+            $src = Get-ChildItem -Path "build\windows" -Recurse -Directory -Filter "Release" |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          Compress-Archive -Path "$src\*" -DestinationPath "..\artifacts\windows-build.zip"
+
+      # ------------------------------------------------------------------ Linux
+      - name: Build Linux
+        if: matrix.target == 'linux'
+        run: flutter build linux --release
+
+      - name: Archive Linux build
+        if: matrix.target == 'linux'
+        run: |
+          mkdir -p ../artifacts
+          cd build/linux/x64/release/bundle
+          tar -czf ../../../../artifacts/linux-build.tar.gz .
+
+      # ----------------------------------------------------------- Upload step
+      - name: Normalize artifact name
+        id: name
+        shell: bash
+        run: |
+          case "${{ matrix.target }}" in
+            android-apk) ext="apk"; files="build/app/outputs/flutter-apk/*.apk" ;;
+            android-aab) ext="aab"; files="build/app/outputs/bundle/release/app-release.aab" ;;
+            ios)         ext="zip"; files="../artifacts/ios-build.zip" ;;
+            macos)       ext="zip"; files="../artifacts/macos-app.zip" ;;
+            windows)     ext="zip"; files="../artifacts/windows-build.zip" ;;
+            linux)       ext="tar.gz"; files="../artifacts/linux-build.tar.gz" ;;
+          esac
+          echo "files=$files" >> $GITHUB_OUTPUT
+          echo "ext=$ext" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumen-reader-${{ matrix.target }}
+          path: ${{ steps.name.outputs.files }}
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve tag name
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( \
+            -name "*.apk" -o \
+            -name "*.aab" -o \
+            -name "*.zip" -o \
+            -name "*.tar.gz" \
+          \) -exec cp {} release-assets/ \;
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          draft: true
+          files: release-assets/*
