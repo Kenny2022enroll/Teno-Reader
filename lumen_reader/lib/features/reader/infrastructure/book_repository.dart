@@ -100,7 +100,7 @@ class BookRepositoryImpl implements BookRepository {
   Future<SettingsPayload> loadSettings() async {
     final s = _storage.settings.get(0);
     if (s != null) return s;
-    final d = const SettingsPayload();
+    const d = SettingsPayload();
     await _storage.settings.put(0, d);
     return d;
   }

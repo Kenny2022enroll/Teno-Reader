@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'features/reader/presentation/pages/reader_page.dart';
-import 'features/shelf/presentation/pages/shelf_page.dart';
-import 'features/settings/presentation/pages/settings_page.dart';
-import 'core/theme/app_theme.dart';
+import '../features/reader/presentation/pages/reader_page.dart';
+import '../features/shelf/presentation/pages/shelf_page.dart';
+import '../features/settings/presentation/pages/settings_page.dart';
+import '../core/theme/app_theme.dart';
 
 final _router = GoRouter(
   initialLocation: '/shelf',

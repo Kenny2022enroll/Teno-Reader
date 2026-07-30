@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +16,7 @@ class AppTypography {
     const base = TextStyle(
       fontFamily: fontText,
       fontWeight: FontWeight.w400,
-      leading: 1.3,
+      height: 1.3,
     );
     return TextTheme(
       displayLarge: base.copyWith(
@@ -196,7 +197,7 @@ class AppPaletteData {
   });
 }
 
-final lightPalette = AppPaletteData(
+const lightPalette = AppPaletteData(
   background: AppPalette.lightBackground,
   secondaryBackground: AppPalette.lightSecondaryBackground,
   tertiaryBackground: AppPalette.lightTertiaryBackground,
@@ -209,7 +210,7 @@ final lightPalette = AppPaletteData(
   secondaryAccent: AppPalette.lightPurple,
 );
 
-final darkPalette = AppPaletteData(
+const darkPalette = AppPaletteData(
   background: AppPalette.darkBackground,
   secondaryBackground: AppPalette.darkSecondaryBackground,
   tertiaryBackground: AppPalette.darkTertiaryBackground,
@@ -229,7 +230,7 @@ final appThemeProvider = StateNotifierProvider<AppThemeController, AppTheme>(
 class AppThemeController extends StateNotifier<AppTheme> {
   AppThemeController()
       : super(
-          AppTheme(
+          const AppTheme(
             mode: ThemeMode.system,
             light: lightPalette,
             dark: darkPalette,
