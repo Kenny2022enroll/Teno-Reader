@@ -49,32 +49,32 @@ class ReadingProgress extends Equatable {
   }
 
   Map<String, dynamic> toMap() => {
-    'bookId': bookId,
-    'chapterId': chapterId,
-    'progress': progress,
-    'scrollOffset': scrollOffset,
-    'totalWordsRead': totalWordsRead,
-    'updatedAt': updatedAt.toIso8601String(),
-  };
+        'bookId': bookId,
+        'chapterId': chapterId,
+        'progress': progress,
+        'scrollOffset': scrollOffset,
+        'totalWordsRead': totalWordsRead,
+        'updatedAt': updatedAt.toIso8601String(),
+      };
 
   factory ReadingProgress.fromMap(Map<String, dynamic> map) => ReadingProgress(
-    bookId: map['bookId'] as String,
-    chapterId: map['chapterId'] as String,
-    progress: (map['progress'] as num).toDouble(),
-    scrollOffset: map['scrollOffset'] as int,
-    totalWordsRead: map['totalWordsRead'] as int,
-    updatedAt: DateTime.parse(map['updatedAt'] as String),
-  );
+        bookId: map['bookId'] as String,
+        chapterId: map['chapterId'] as String,
+        progress: (map['progress'] as num).toDouble(),
+        scrollOffset: map['scrollOffset'] as int,
+        totalWordsRead: map['totalWordsRead'] as int,
+        updatedAt: DateTime.parse(map['updatedAt'] as String),
+      );
 
   @override
   List<Object?> get props => [
-    bookId,
-    chapterId,
-    progress,
-    scrollOffset,
-    totalWordsRead,
-    updatedAt,
-  ];
+        bookId,
+        chapterId,
+        progress,
+        scrollOffset,
+        totalWordsRead,
+        updatedAt,
+      ];
 }
 
 @HiveType(typeId: 3)
@@ -123,50 +123,51 @@ class Highlight extends Equatable {
     int? endOffset,
     String? color,
     DateTime? createdAt,
-  }) => Highlight(
-    id: id ?? this.id,
-    bookId: bookId ?? this.bookId,
-    chapterId: chapterId ?? this.chapterId,
-    selectedText: selectedText ?? this.selectedText,
-    startOffset: startOffset ?? this.startOffset,
-    endOffset: endOffset ?? this.endOffset,
-    color: color ?? this.color,
-    createdAt: createdAt ?? this.createdAt,
-  );
+  }) =>
+      Highlight(
+        id: id ?? this.id,
+        bookId: bookId ?? this.bookId,
+        chapterId: chapterId ?? this.chapterId,
+        selectedText: selectedText ?? this.selectedText,
+        startOffset: startOffset ?? this.startOffset,
+        endOffset: endOffset ?? this.endOffset,
+        color: color ?? this.color,
+        createdAt: createdAt ?? this.createdAt,
+      );
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'bookId': bookId,
-    'chapterId': chapterId,
-    'selectedText': selectedText,
-    'startOffset': startOffset,
-    'endOffset': endOffset,
-    'color': color,
-    'createdAt': createdAt.toIso8601String(),
-  };
+        'id': id,
+        'bookId': bookId,
+        'chapterId': chapterId,
+        'selectedText': selectedText,
+        'startOffset': startOffset,
+        'endOffset': endOffset,
+        'color': color,
+        'createdAt': createdAt.toIso8601String(),
+      };
 
   factory Highlight.fromMap(Map<String, dynamic> m) => Highlight(
-    id: m['id'] as String,
-    bookId: m['bookId'] as String,
-    chapterId: m['chapterId'] as String,
-    selectedText: m['selectedText'] as String,
-    startOffset: m['startOffset'] as int,
-    endOffset: m['endOffset'] as int,
-    color: m['color'] as String,
-    createdAt: DateTime.parse(m['createdAt'] as String),
-  );
+        id: m['id'] as String,
+        bookId: m['bookId'] as String,
+        chapterId: m['chapterId'] as String,
+        selectedText: m['selectedText'] as String,
+        startOffset: m['startOffset'] as int,
+        endOffset: m['endOffset'] as int,
+        color: m['color'] as String,
+        createdAt: DateTime.parse(m['createdAt'] as String),
+      );
 
   @override
   List<Object?> get props => [
-    id,
-    bookId,
-    chapterId,
-    selectedText,
-    startOffset,
-    endOffset,
-    color,
-    createdAt,
-  ];
+        id,
+        bookId,
+        chapterId,
+        selectedText,
+        startOffset,
+        endOffset,
+        color,
+        createdAt,
+      ];
 }
 
 @HiveType(typeId: 4)
@@ -199,32 +200,32 @@ class Bookmark extends Equatable {
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'bookId': bookId,
-    'chapterId': chapterId,
-    'scrollOffset': scrollOffset,
-    'snippet': snippet,
-    'createdAt': createdAt.toIso8601String(),
-  };
+        'id': id,
+        'bookId': bookId,
+        'chapterId': chapterId,
+        'scrollOffset': scrollOffset,
+        'snippet': snippet,
+        'createdAt': createdAt.toIso8601String(),
+      };
 
   factory Bookmark.fromMap(Map<String, dynamic> m) => Bookmark(
-    id: m['id'] as String,
-    bookId: m['bookId'] as String,
-    chapterId: m['chapterId'] as String,
-    scrollOffset: m['scrollOffset'] as int,
-    snippet: m['snippet'] as String,
-    createdAt: DateTime.parse(m['createdAt'] as String),
-  );
+        id: m['id'] as String,
+        bookId: m['bookId'] as String,
+        chapterId: m['chapterId'] as String,
+        scrollOffset: m['scrollOffset'] as int,
+        snippet: m['snippet'] as String,
+        createdAt: DateTime.parse(m['createdAt'] as String),
+      );
 
   @override
   List<Object?> get props => [
-    id,
-    bookId,
-    chapterId,
-    scrollOffset,
-    snippet,
-    createdAt,
-  ];
+        id,
+        bookId,
+        chapterId,
+        scrollOffset,
+        snippet,
+        createdAt,
+      ];
 }
 
 @HiveType(typeId: 5)
@@ -273,52 +274,53 @@ class Annotation extends Equatable {
     String? note,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => Annotation(
-    id: id ?? this.id,
-    bookId: bookId ?? this.bookId,
-    chapterId: chapterId ?? this.chapterId,
-    anchorText: anchorText ?? this.anchorText,
-    offset: offset ?? this.offset,
-    note: note ?? this.note,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
-  );
+  }) =>
+      Annotation(
+        id: id ?? this.id,
+        bookId: bookId ?? this.bookId,
+        chapterId: chapterId ?? this.chapterId,
+        anchorText: anchorText ?? this.anchorText,
+        offset: offset ?? this.offset,
+        note: note ?? this.note,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'bookId': bookId,
-    'chapterId': chapterId,
-    'anchorText': anchorText,
-    'offset': offset,
-    'note': note,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt?.toIso8601String(),
-  };
+        'id': id,
+        'bookId': bookId,
+        'chapterId': chapterId,
+        'anchorText': anchorText,
+        'offset': offset,
+        'note': note,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      };
 
   factory Annotation.fromMap(Map<String, dynamic> m) => Annotation(
-    id: m['id'] as String,
-    bookId: m['bookId'] as String,
-    chapterId: m['chapterId'] as String,
-    anchorText: m['anchorText'] as String,
-    offset: m['offset'] as int,
-    note: m['note'] as String,
-    createdAt: DateTime.parse(m['createdAt'] as String),
-    updatedAt: m['updatedAt'] == null
-        ? null
-        : DateTime.parse(m['updatedAt'] as String),
-  );
+        id: m['id'] as String,
+        bookId: m['bookId'] as String,
+        chapterId: m['chapterId'] as String,
+        anchorText: m['anchorText'] as String,
+        offset: m['offset'] as int,
+        note: m['note'] as String,
+        createdAt: DateTime.parse(m['createdAt'] as String),
+        updatedAt: m['updatedAt'] == null
+            ? null
+            : DateTime.parse(m['updatedAt'] as String),
+      );
 
   @override
   List<Object?> get props => [
-    id,
-    bookId,
-    chapterId,
-    anchorText,
-    offset,
-    note,
-    createdAt,
-    updatedAt,
-  ];
+        id,
+        bookId,
+        chapterId,
+        anchorText,
+        offset,
+        note,
+        createdAt,
+        updatedAt,
+      ];
 }
 
 @HiveType(typeId: 6)
@@ -382,60 +384,61 @@ class SettingsPayload extends Equatable {
     bool? syncEnabled,
     bool? reducedMotion,
     bool? largeText,
-  }) => SettingsPayload(
-    fontSize: fontSize ?? this.fontSize,
-    fontFamily: fontFamily ?? this.fontFamily,
-    theme: theme ?? this.theme,
-    autoNightMode: autoNightMode ?? this.autoNightMode,
-    lineHeight: lineHeight ?? this.lineHeight,
-    paragraphSpacing: paragraphSpacing ?? this.paragraphSpacing,
-    pageTurnStyle: pageTurnStyle ?? this.pageTurnStyle,
-    keepScreenAwake: keepScreenAwake ?? this.keepScreenAwake,
-    syncEnabled: syncEnabled ?? this.syncEnabled,
-    reducedMotion: reducedMotion ?? this.reducedMotion,
-    largeText: largeText ?? this.largeText,
-  );
+  }) =>
+      SettingsPayload(
+        fontSize: fontSize ?? this.fontSize,
+        fontFamily: fontFamily ?? this.fontFamily,
+        theme: theme ?? this.theme,
+        autoNightMode: autoNightMode ?? this.autoNightMode,
+        lineHeight: lineHeight ?? this.lineHeight,
+        paragraphSpacing: paragraphSpacing ?? this.paragraphSpacing,
+        pageTurnStyle: pageTurnStyle ?? this.pageTurnStyle,
+        keepScreenAwake: keepScreenAwake ?? this.keepScreenAwake,
+        syncEnabled: syncEnabled ?? this.syncEnabled,
+        reducedMotion: reducedMotion ?? this.reducedMotion,
+        largeText: largeText ?? this.largeText,
+      );
 
   Map<String, dynamic> toMap() => {
-    'fontSize': fontSize,
-    'fontFamily': fontFamily,
-    'theme': theme,
-    'autoNightMode': autoNightMode,
-    'lineHeight': lineHeight,
-    'paragraphSpacing': paragraphSpacing,
-    'pageTurnStyle': pageTurnStyle,
-    'keepScreenAwake': keepScreenAwake,
-    'syncEnabled': syncEnabled,
-    'reducedMotion': reducedMotion,
-    'largeText': largeText,
-  };
+        'fontSize': fontSize,
+        'fontFamily': fontFamily,
+        'theme': theme,
+        'autoNightMode': autoNightMode,
+        'lineHeight': lineHeight,
+        'paragraphSpacing': paragraphSpacing,
+        'pageTurnStyle': pageTurnStyle,
+        'keepScreenAwake': keepScreenAwake,
+        'syncEnabled': syncEnabled,
+        'reducedMotion': reducedMotion,
+        'largeText': largeText,
+      };
 
   factory SettingsPayload.fromMap(Map<String, dynamic> m) => SettingsPayload(
-    fontSize: (m['fontSize'] as num?)?.toDouble() ?? 17,
-    fontFamily: m['fontFamily'] as String? ?? 'SF Pro Text',
-    theme: m['theme'] as String? ?? 'light',
-    autoNightMode: m['autoNightMode'] as bool? ?? false,
-    lineHeight: (m['lineHeight'] as num?)?.toDouble() ?? 1.6,
-    paragraphSpacing: (m['paragraphSpacing'] as num?)?.toDouble() ?? 1.2,
-    pageTurnStyle: m['pageTurnStyle'] as String? ?? 'slide',
-    keepScreenAwake: m['keepScreenAwake'] as bool? ?? true,
-    syncEnabled: m['syncEnabled'] as bool? ?? false,
-    reducedMotion: m['reducedMotion'] as bool? ?? false,
-    largeText: m['largeText'] as bool? ?? false,
-  );
+        fontSize: (m['fontSize'] as num?)?.toDouble() ?? 17,
+        fontFamily: m['fontFamily'] as String? ?? 'SF Pro Text',
+        theme: m['theme'] as String? ?? 'light',
+        autoNightMode: m['autoNightMode'] as bool? ?? false,
+        lineHeight: (m['lineHeight'] as num?)?.toDouble() ?? 1.6,
+        paragraphSpacing: (m['paragraphSpacing'] as num?)?.toDouble() ?? 1.2,
+        pageTurnStyle: m['pageTurnStyle'] as String? ?? 'slide',
+        keepScreenAwake: m['keepScreenAwake'] as bool? ?? true,
+        syncEnabled: m['syncEnabled'] as bool? ?? false,
+        reducedMotion: m['reducedMotion'] as bool? ?? false,
+        largeText: m['largeText'] as bool? ?? false,
+      );
 
   @override
   List<Object?> get props => [
-    fontSize,
-    fontFamily,
-    theme,
-    autoNightMode,
-    lineHeight,
-    paragraphSpacing,
-    pageTurnStyle,
-    keepScreenAwake,
-    syncEnabled,
-    reducedMotion,
-    largeText,
-  ];
+        fontSize,
+        fontFamily,
+        theme,
+        autoNightMode,
+        lineHeight,
+        paragraphSpacing,
+        pageTurnStyle,
+        keepScreenAwake,
+        syncEnabled,
+        reducedMotion,
+        largeText,
+      ];
 }
