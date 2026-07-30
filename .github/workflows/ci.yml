@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    tags-ignore: ["v*"]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lumen_reader
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Read Flutter version
+        id: fv
+        run: echo "version=$(flutter --version | head -n1)" >> $GITHUB_OUTPUT
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            lumen_reader/.dart_tool
+            lumen_reader/.flutter-plugins
+            lumen_reader/.flutter-plugins-dependencies
+          key: pub-${{ runner.os }}-${{ steps.fv.outputs.version }}-${{ hashFiles('lumen_reader/pubspec.yaml', 'lumen_reader/pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-${{ steps.fv.outputs.version }}-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib/
+
+      - name: Analyze project
+        run: flutter analyze --no-pub
+
+      - name: Run tests
+        run: flutter test --coverage --reporter expanded
+
+      - name: Upload coverage
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lumen_reader/coverage/
+          retention-days: 14
