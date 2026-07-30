@@ -19,11 +19,14 @@ class StorageService {
   // MARK: - Books
 
   HiveBox<BookEntity> get books => Hive.box<BookEntity>(kBooksBoxName);
-  HiveBox<ReadingProgress> get progress => Hive.box<ReadingProgress>(kProgressBoxName);
+  HiveBox<ReadingProgress> get progress =>
+      Hive.box<ReadingProgress>(kProgressBoxName);
   HiveBox<Highlight> get highlights => Hive.box<Highlight>(kHighlightBoxName);
   HiveBox<Bookmark> get bookmarks => Hive.box<Bookmark>(kBookmarkBoxName);
-  HiveBox<Annotation> get annotations => Hive.box<Annotation>(kAnnotationBoxName);
-  HiveBox<SettingsPayload> get settings => Hive.box<SettingsPayload>(kSettingsBoxName);
+  HiveBox<Annotation> get annotations =>
+      Hive.box<Annotation>(kAnnotationBoxName);
+  HiveBox<SettingsPayload> get settings =>
+      Hive.box<SettingsPayload>(kSettingsBoxName);
 
   Future<void> saveBook(BookEntity book) async {
     await books.put(book.id, book);

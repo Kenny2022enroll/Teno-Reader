@@ -17,10 +17,7 @@ class EpubParser {
     final container = archive.findFile('META-INF/container.xml');
     if (container != null) {
       final xml = XmlDocument.parse(String.fromCharCodes(container.content));
-      opfPath = xml
-          .findElements('rootfile')
-          .first
-          .getAttribute('full-path');
+      opfPath = xml.findElements('rootfile').first.getAttribute('full-path');
     }
     opfPath ??= 'OEBPS/content.opf';
 
@@ -50,7 +47,9 @@ class EpubParser {
       final dir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
       final file = archive.findFile('$dir$coverHref');
       if (file != null) {
-        final tmp = await File('${Directory.systemTemp.path}/lumen_cover_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        final tmp = await File(
+          '${Directory.systemTemp.path}/lumen_cover_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        );
         tmp.writeAsBytesSync(file.content as Uint8List);
         coverPath = tmp.path;
       }

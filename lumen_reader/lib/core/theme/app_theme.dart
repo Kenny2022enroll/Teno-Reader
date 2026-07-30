@@ -18,15 +18,28 @@ class AppTypography {
       leading: 1.3,
     );
     return TextTheme(
-      displayLarge: base.copyWith(fontSize: 34, fontWeight: FontWeight.w700, height: 1.15),
-      displayMedium: base.copyWith(fontSize: 28, fontWeight: FontWeight.w600, height: 1.2),
+      displayLarge: base.copyWith(
+        fontSize: 34,
+        fontWeight: FontWeight.w700,
+        height: 1.15,
+      ),
+      displayMedium: base.copyWith(
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        height: 1.2,
+      ),
       headlineLarge: base.copyWith(fontSize: 22, fontWeight: FontWeight.w600),
       headlineMedium: base.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
       titleLarge: base.copyWith(fontSize: 17, fontWeight: FontWeight.w600),
       titleMedium: base.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
       bodyLarge: base.copyWith(fontSize: 17),
       bodyMedium: base.copyWith(fontSize: 15),
-      bodySmall: base.copyWith(fontSize: 13, color: dark ? AppPalette.darkTertiaryLabel : AppPalette.lightTertiaryLabel),
+      bodySmall: base.copyWith(
+        fontSize: 13,
+        color: dark
+            ? AppPalette.darkTertiaryLabel
+            : AppPalette.lightTertiaryLabel,
+      ),
       labelLarge: base.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
       labelMedium: base.copyWith(fontSize: 13, fontWeight: FontWeight.w500),
       labelSmall: base.copyWith(fontSize: 11, fontWeight: FontWeight.w500),
@@ -73,11 +86,7 @@ class AppTheme {
   final AppPaletteData light;
   final AppPaletteData dark;
 
-  const AppTheme({
-    required this.mode,
-    required this.light,
-    required this.dark,
-  });
+  const AppTheme({required this.mode, required this.light, required this.dark});
 
   ThemeData get lightTheme => _buildTheme(light, Brightness.light);
   ThemeData get darkTheme => _buildTheme(dark, Brightness.dark);
@@ -96,7 +105,9 @@ class AppTheme {
       error: AppPalette.lightRed,
     );
 
-    final textTheme = AppTypography.buildTextTheme(brightness == Brightness.dark);
+    final textTheme = AppTypography.buildTextTheme(
+      brightness == Brightness.dark,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -218,11 +229,13 @@ final appThemeProvider = StateNotifierProvider<AppThemeController, AppTheme>(
 
 class AppThemeController extends StateNotifier<AppTheme> {
   AppThemeController()
-      : super(AppTheme(
+    : super(
+        AppTheme(
           mode: ThemeMode.system,
           light: lightPalette,
           dark: darkPalette,
-        ));
+        ),
+      );
 
   void setMode(ThemeMode mode) {
     state = AppTheme(mode: mode, light: state.light, dark: state.dark);

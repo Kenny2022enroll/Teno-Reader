@@ -88,7 +88,16 @@ class BookEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, title, author, coverPath, description, filePath,
-        format, totalWords, addedAt, lastReadAt, isPinned,
-      ];
+    id,
+    title,
+    author,
+    coverPath,
+    description,
+    filePath,
+    format,
+    totalWords,
+    addedAt,
+    lastReadAt,
+    isPinned,
+  ];
 }

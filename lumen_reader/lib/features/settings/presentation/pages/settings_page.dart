@@ -51,8 +51,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   _ListTile(
                     leading: const Icon(Icons.animation),
                     title: '页面过渡动效',
-                    subtitle: s.pageTurnStyle == 'slide' ? '滑动' :
-                               s.pageTurnStyle == 'curl' ? '翻页' : '无',
+                    subtitle: s.pageTurnStyle == 'slide'
+                        ? '滑动'
+                        : s.pageTurnStyle == 'curl'
+                        ? '翻页'
+                        : '无',
                     trailing: DropdownButton<String>(
                       value: s.pageTurnStyle,
                       items: const [
@@ -78,9 +81,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     trailing: DropdownButton<String>(
                       value: s.fontFamily,
                       items: const [
-                        DropdownMenuItem(value: 'SF Pro Text', child: Text('系统默认')),
-                        DropdownMenuItem(value: 'Charter', child: Text('Charter (衬线)')),
-                        DropdownMenuItem(value: 'Georgia', child: Text('Georgia')),
+                        DropdownMenuItem(
+                          value: 'SF Pro Text',
+                          child: Text('系统默认'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Charter',
+                          child: Text('Charter (衬线)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Georgia',
+                          child: Text('Georgia'),
+                        ),
                       ],
                       onChanged: (v) {
                         if (v != null) _save(s.copyWith(fontFamily: v));
@@ -221,7 +233,12 @@ class _Section extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xs, 0, AppSpacing.xs, AppSpacing.xs),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xs,
+            0,
+            AppSpacing.xs,
+            AppSpacing.xs,
+          ),
           child: Text(
             title.toUpperCase(),
             style: theme.textTheme.labelMedium!.copyWith(
@@ -241,7 +258,12 @@ class _Section extends StatelessWidget {
               for (int i = 0; i < children.length; i++) ...[
                 children[i],
                 if (i != children.length - 1)
-                  Divider(height: 0, indent: 16, endIndent: 16, color: theme.dividerColor),
+                  Divider(
+                    height: 0,
+                    indent: 16,
+                    endIndent: 16,
+                    color: theme.dividerColor,
+                  ),
               ],
             ],
           ),
@@ -272,7 +294,8 @@ class _ListTile extends StatelessWidget {
       subtitle: subtitle != null ? Text(subtitle!) : null,
       trailing: trailing,
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md, vertical: AppSpacing.xs,
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
       ),
     );
   }

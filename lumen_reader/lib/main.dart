@@ -14,10 +14,7 @@ import 'features/reader/domain/entities/reading_entities.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final logger = Logger(
-    printer: PrettyPrinter(),
-    level: Level.info,
-  );
+  final logger = Logger(printer: PrettyPrinter(), level: Level.info);
 
   try {
     final dir = await getApplicationSupportDirectory();

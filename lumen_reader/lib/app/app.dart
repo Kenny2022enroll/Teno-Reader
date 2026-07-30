@@ -29,13 +29,16 @@ final _router = GoRouter(
             return FadeTransition(
               opacity: animation,
               child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.04),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                )),
+                position:
+                    Tween<Offset>(
+                      begin: const Offset(0, 0.04),
+                      end: Offset.zero,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutCubic,
+                      ),
+                    ),
                 child: child,
               ),
             );
@@ -73,9 +76,9 @@ class LumenApp extends ConsumerWidget {
         // Enforce safe area and platform-level transitions
         return GestureDetector(
           child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.noScaling,
-            ),
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.noScaling),
             child: child ?? const SizedBox.shrink(),
           ),
         );

@@ -57,18 +57,24 @@ class ReadingProgress extends Equatable {
     'updatedAt': updatedAt.toIso8601String(),
   };
 
-  factory ReadingProgress.fromMap(Map<String, dynamic> map) =>
-      ReadingProgress(
-        bookId: map['bookId'] as String,
-        chapterId: map['chapterId'] as String,
-        progress: (map['progress'] as num).toDouble(),
-        scrollOffset: map['scrollOffset'] as int,
-        totalWordsRead: map['totalWordsRead'] as int,
-        updatedAt: DateTime.parse(map['updatedAt'] as String),
-      );
+  factory ReadingProgress.fromMap(Map<String, dynamic> map) => ReadingProgress(
+    bookId: map['bookId'] as String,
+    chapterId: map['chapterId'] as String,
+    progress: (map['progress'] as num).toDouble(),
+    scrollOffset: map['scrollOffset'] as int,
+    totalWordsRead: map['totalWordsRead'] as int,
+    updatedAt: DateTime.parse(map['updatedAt'] as String),
+  );
 
   @override
-  List<Object?> get props => [bookId, chapterId, progress, scrollOffset, totalWordsRead, updatedAt];
+  List<Object?> get props => [
+    bookId,
+    chapterId,
+    progress,
+    scrollOffset,
+    totalWordsRead,
+    updatedAt,
+  ];
 }
 
 @HiveType(typeId: 3)
@@ -109,8 +115,14 @@ class Highlight extends Equatable {
   });
 
   Highlight copyWith({
-    String? id, String? bookId, String? chapterId, String? selectedText,
-    int? startOffset, int? endOffset, String? color, DateTime? createdAt,
+    String? id,
+    String? bookId,
+    String? chapterId,
+    String? selectedText,
+    int? startOffset,
+    int? endOffset,
+    String? color,
+    DateTime? createdAt,
   }) => Highlight(
     id: id ?? this.id,
     bookId: bookId ?? this.bookId,
@@ -123,9 +135,13 @@ class Highlight extends Equatable {
   );
 
   Map<String, dynamic> toMap() => {
-    'id': id, 'bookId': bookId, 'chapterId': chapterId,
-    'selectedText': selectedText, 'startOffset': startOffset,
-    'endOffset': endOffset, 'color': color,
+    'id': id,
+    'bookId': bookId,
+    'chapterId': chapterId,
+    'selectedText': selectedText,
+    'startOffset': startOffset,
+    'endOffset': endOffset,
+    'color': color,
     'createdAt': createdAt.toIso8601String(),
   };
 
@@ -141,7 +157,16 @@ class Highlight extends Equatable {
   );
 
   @override
-  List<Object?> get props => [id, bookId, chapterId, selectedText, startOffset, endOffset, color, createdAt];
+  List<Object?> get props => [
+    id,
+    bookId,
+    chapterId,
+    selectedText,
+    startOffset,
+    endOffset,
+    color,
+    createdAt,
+  ];
 }
 
 @HiveType(typeId: 4)
@@ -174,8 +199,11 @@ class Bookmark extends Equatable {
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id, 'bookId': bookId, 'chapterId': chapterId,
-    'scrollOffset': scrollOffset, 'snippet': snippet,
+    'id': id,
+    'bookId': bookId,
+    'chapterId': chapterId,
+    'scrollOffset': scrollOffset,
+    'snippet': snippet,
     'createdAt': createdAt.toIso8601String(),
   };
 
@@ -189,7 +217,14 @@ class Bookmark extends Equatable {
   );
 
   @override
-  List<Object?> get props => [id, bookId, chapterId, scrollOffset, snippet, createdAt];
+  List<Object?> get props => [
+    id,
+    bookId,
+    chapterId,
+    scrollOffset,
+    snippet,
+    createdAt,
+  ];
 }
 
 @HiveType(typeId: 5)
@@ -230,8 +265,14 @@ class Annotation extends Equatable {
   });
 
   Annotation copyWith({
-    String? id, String? bookId, String? chapterId, String? anchorText,
-    int? offset, String? note, DateTime? createdAt, DateTime? updatedAt,
+    String? id,
+    String? bookId,
+    String? chapterId,
+    String? anchorText,
+    int? offset,
+    String? note,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) => Annotation(
     id: id ?? this.id,
     bookId: bookId ?? this.bookId,
@@ -244,8 +285,12 @@ class Annotation extends Equatable {
   );
 
   Map<String, dynamic> toMap() => {
-    'id': id, 'bookId': bookId, 'chapterId': chapterId,
-    'anchorText': anchorText, 'offset': offset, 'note': note,
+    'id': id,
+    'bookId': bookId,
+    'chapterId': chapterId,
+    'anchorText': anchorText,
+    'offset': offset,
+    'note': note,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt?.toIso8601String(),
   };
@@ -264,7 +309,16 @@ class Annotation extends Equatable {
   );
 
   @override
-  List<Object?> get props => [id, bookId, chapterId, anchorText, offset, note, createdAt, updatedAt];
+  List<Object?> get props => [
+    id,
+    bookId,
+    chapterId,
+    anchorText,
+    offset,
+    note,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 @HiveType(typeId: 6)
@@ -317,10 +371,17 @@ class SettingsPayload extends Equatable {
   });
 
   SettingsPayload copyWith({
-    double? fontSize, String? fontFamily, String? theme,
-    bool? autoNightMode, double? lineHeight, double? paragraphSpacing,
-    String? pageTurnStyle, bool? keepScreenAwake, bool? syncEnabled,
-    bool? reducedMotion, bool? largeText,
+    double? fontSize,
+    String? fontFamily,
+    String? theme,
+    bool? autoNightMode,
+    double? lineHeight,
+    double? paragraphSpacing,
+    String? pageTurnStyle,
+    bool? keepScreenAwake,
+    bool? syncEnabled,
+    bool? reducedMotion,
+    bool? largeText,
   }) => SettingsPayload(
     fontSize: fontSize ?? this.fontSize,
     fontFamily: fontFamily ?? this.fontFamily,
@@ -336,11 +397,17 @@ class SettingsPayload extends Equatable {
   );
 
   Map<String, dynamic> toMap() => {
-    'fontSize': fontSize, 'fontFamily': fontFamily, 'theme': theme,
-    'autoNightMode': autoNightMode, 'lineHeight': lineHeight,
-    'paragraphSpacing': paragraphSpacing, 'pageTurnStyle': pageTurnStyle,
-    'keepScreenAwake': keepScreenAwake, 'syncEnabled': syncEnabled,
-    'reducedMotion': reducedMotion, 'largeText': largeText,
+    'fontSize': fontSize,
+    'fontFamily': fontFamily,
+    'theme': theme,
+    'autoNightMode': autoNightMode,
+    'lineHeight': lineHeight,
+    'paragraphSpacing': paragraphSpacing,
+    'pageTurnStyle': pageTurnStyle,
+    'keepScreenAwake': keepScreenAwake,
+    'syncEnabled': syncEnabled,
+    'reducedMotion': reducedMotion,
+    'largeText': largeText,
   };
 
   factory SettingsPayload.fromMap(Map<String, dynamic> m) => SettingsPayload(
@@ -359,8 +426,16 @@ class SettingsPayload extends Equatable {
 
   @override
   List<Object?> get props => [
-    fontSize, fontFamily, theme, autoNightMode, lineHeight,
-    paragraphSpacing, pageTurnStyle, keepScreenAwake, syncEnabled,
-    reducedMotion, largeText,
+    fontSize,
+    fontFamily,
+    theme,
+    autoNightMode,
+    lineHeight,
+    paragraphSpacing,
+    pageTurnStyle,
+    keepScreenAwake,
+    syncEnabled,
+    reducedMotion,
+    largeText,
   ];
 }

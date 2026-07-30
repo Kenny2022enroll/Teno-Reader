@@ -56,17 +56,14 @@ class ProgressRepositoryImpl implements ProgressRepository {
   }
 
   @override
-  Future<void> updateHighlight(Highlight h) =>
-      _storage.highlights.put(h.id, h);
+  Future<void> updateHighlight(Highlight h) => _storage.highlights.put(h.id, h);
 
   @override
   Future<void> deleteHighlight(String id) => _storage.highlights.delete(id);
 
   @override
   Future<List<Bookmark>> fetchBookmarks(String bookId) async {
-    return _storage.bookmarks.values
-        .where((b) => b.bookId == bookId)
-        .toList()
+    return _storage.bookmarks.values.where((b) => b.bookId == bookId).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
@@ -94,9 +91,7 @@ class ProgressRepositoryImpl implements ProgressRepository {
 
   @override
   Future<List<Annotation>> fetchAnnotations(String bookId) async {
-    return _storage.annotations.values
-        .where((a) => a.bookId == bookId)
-        .toList()
+    return _storage.annotations.values.where((a) => a.bookId == bookId).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 

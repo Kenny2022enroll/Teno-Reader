@@ -18,7 +18,10 @@ final readerSettingsProvider = FutureProvider<SettingsPayload>((ref) {
   return repo.loadSettings();
 });
 
-final readerBookProvider = FutureProvider.family<BookEntity?, String>((ref, id) {
+final readerBookProvider = FutureProvider.family<BookEntity?, String>((
+  ref,
+  id,
+) {
   final repo = ref.watch(bookRepositoryProvider);
   return repo.fetchBook(id);
 });
@@ -97,11 +100,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   Future<void> _loadEpubChapters(BookEntity book) async {
     // Placeholder — real implementation parses the epub spine.
     // We show a "demo" chapter for this scaffold.
-    _chapters = [
-      '第一章',
-      '第二章',
-      '第三章',
-    ];
+    _chapters = ['第一章', '第二章', '第三章'];
     for (int i = 0; i < _chapters.length; i++) {
       _chapterOffsets.add(i * 5000.0);
     }
@@ -127,7 +126,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   DateTime? _lastSave;
   Future<void> _autoSaveProgress() async {
     final now = DateTime.now();
-    if (_lastSave != null && now.difference(_lastSave!) < const Duration(seconds: 5)) {
+    if (_lastSave != null &&
+        now.difference(_lastSave!) < const Duration(seconds: 5)) {
       return;
     }
     _lastSave = now;
@@ -137,14 +137,16 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     if (book == null) return;
 
     final repo = ref.read(progressRepositoryProvider);
-    await repo.saveProgress(ReadingProgress(
-      bookId: book.id,
-      chapterId: _chapters.isNotEmpty ? _chapters[_currentChapter] : '',
-      progress: _currentProgress,
-      scrollOffset: _scrollCtrl.hasClients ? _scrollCtrl.offset.toInt() : 0,
-      totalWordsRead: (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0),
-      updatedAt: now,
-    ));
+    await repo.saveProgress(
+      ReadingProgress(
+        bookId: book.id,
+        chapterId: _chapters.isNotEmpty ? _chapters[_currentChapter] : '',
+        progress: _currentProgress,
+        scrollOffset: _scrollCtrl.hasClients ? _scrollCtrl.offset.toInt() : 0,
+        totalWordsRead: (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0),
+        updatedAt: now,
+      ),
+    );
   }
 
   @override
@@ -153,7 +155,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final settingsAsync = ref.watch(readerSettingsProvider);
 
     return Scaffold(
-      backgroundColor: _resolveBgColor(settingsAsync.valueOrNull, Theme.of(context)),
+      backgroundColor: _resolveBgColor(
+        settingsAsync.valueOrNull,
+        Theme.of(context),
+      ),
       body: bookAsync.when(
         data: (book) {
           if (book == null) return const Center(child: Text('书籍未找到'));
@@ -191,7 +196,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   Widget _buildReaderSurface(BookEntity book, SettingsPayload? settings) {
-    if (settings?.pageTurnStyle == 'curl' || settings?.pageTurnStyle == 'slide') {
+    if (settings?.pageTurnStyle == 'curl' ||
+        settings?.pageTurnStyle == 'slide') {
       return PageView.builder(
         controller: _pageCtrl,
         itemCount: _chapters.length,
@@ -219,7 +225,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
-  Widget _buildChapterBody(BookEntity book, int chapterIndex, SettingsPayload? s) {
+  Widget _buildChapterBody(
+    BookEntity book,
+    int chapterIndex,
+    SettingsPayload? s,
+  ) {
     final theme = Theme.of(context);
     final textColor = _resolveTextColor(s, theme);
 
@@ -257,7 +267,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   String _demoText(int i) {
-    const sample = '这是一段示例文本，用于演示流畅的阅读体验。在真实实现中，这段内容会来自 EPUB 的某个章节，保持完整的排版与语义结构。\n\n';
+    const sample =
+        '这是一段示例文本，用于演示流畅的阅读体验。在真实实现中，这段内容会来自 EPUB 的某个章节，保持完整的排版与语义结构。\n\n';
     return sample * (3 + i);
   }
 
@@ -286,12 +297,12 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       child: AnimatedSlideDown(
         visible: _showControls,
         child: Container(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top,
-          ),
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
           decoration: BoxDecoration(
             color: _resolveBgColor(s, Theme.of(context)).withOpacity(0.9),
-            boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 12)],
+            boxShadow: const [
+              BoxShadow(color: Color(0x22000000), blurRadius: 12),
+            ],
           ),
           child: SafeArea(
             bottom: false,
@@ -306,14 +317,18 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(book.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium),
-                      Text(book.author,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        book.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        book.author,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
@@ -323,7 +338,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   onPressed: _addBookmark,
                 ),
                 IconButton(
-                  icon: Icon(_isPlayingTts ? Icons.pause_circle : Icons.play_circle),
+                  icon: Icon(
+                    _isPlayingTts ? Icons.pause_circle : Icons.play_circle,
+                  ),
                   tooltip: '朗读',
                   onPressed: _toggleTts,
                 ),
@@ -349,7 +366,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           ),
           decoration: BoxDecoration(
             color: _resolveBgColor(s, Theme.of(context)).withOpacity(0.92),
-            boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 12)],
+            boxShadow: const [
+              BoxShadow(color: Color(0x22000000), blurRadius: 12),
+            ],
           ),
           child: SafeArea(
             top: false,
@@ -359,7 +378,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                 _buildChapterScrubber(),
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: AppSpacing.sm,
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -407,11 +427,18 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   Widget _buildChapterScrubber() {
     if (_chapters.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xs),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.xs,
+      ),
       child: Row(
         children: [
-          Text('第${_currentChapter + 1}章',
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            '第${_currentChapter + 1}章',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           Expanded(
             child: Slider(
               value: _currentProgress.clamp(0.0, 1.0),
@@ -424,8 +451,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               },
             ),
           ),
-          Text('${(_currentProgress * 100).round()}%',
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            '${(_currentProgress * 100).round()}%',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
     );
@@ -463,9 +492,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       snippet: '示例片段...',
     );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已添加书签 ${bm.id.substring(0, 6)}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已添加书签 ${bm.id.substring(0, 6)}')));
     }
   }
 
@@ -481,7 +510,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('高亮颜色', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+            const Text(
+              '高亮颜色',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.md),
             Wrap(
               spacing: AppSpacing.sm,
@@ -501,9 +533,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     );
                     if (mounted) {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('已添加 $c 高亮')),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('已添加 $c 高亮')));
                     }
                   },
                 );
@@ -521,7 +553,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       setState(() => _isPlayingTts = false);
     } else {
       final text = _demoText(_currentChapter);
-      await _tts.speak(text.substring(0, text.length > 600 ? 600 : text.length));
+      await _tts.speak(
+        text.substring(0, text.length > 600 ? 600 : text.length),
+      );
       setState(() => _isPlayingTts = true);
     }
   }
@@ -531,31 +565,19 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   void _showHighlights() {
-    _showBottomSheet(
-      title: '我的高亮',
-      child: _buildHighlightList(),
-    );
+    _showBottomSheet(title: '我的高亮', child: _buildHighlightList());
   }
 
   void _showAnnotations() {
-    _showBottomSheet(
-      title: '我的注释',
-      child: _buildAnnotationList(),
-    );
+    _showBottomSheet(title: '我的注释', child: _buildAnnotationList());
   }
 
   void _showBookmarks() {
-    _showBottomSheet(
-      title: '我的书签',
-      child: _buildBookmarkList(),
-    );
+    _showBottomSheet(title: '我的书签', child: _buildBookmarkList());
   }
 
   void _showTypographyPanel() {
-    _showBottomSheet(
-      title: '排版设置',
-      child: _buildTypographyPanel(),
-    );
+    _showBottomSheet(title: '排版设置', child: _buildTypographyPanel());
   }
 
   Future<void> _cycleTheme() async {
@@ -568,10 +590,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     ref.invalidate(readerSettingsProvider);
   }
 
-  void _showBottomSheet({
-    required String title,
-    required Widget child,
-  }) {
+  void _showBottomSheet({required String title, required Widget child}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -581,7 +600,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       ),
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.md,
         ),
         child: SafeArea(
           child: Column(
@@ -610,7 +632,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
-  Widget _buildHighlightList() => const _PlaceholderList(icon: Icons.format_color_highlight);
+  Widget _buildHighlightList() =>
+      const _PlaceholderList(icon: Icons.format_color_highlight);
   Widget _buildAnnotationList() => const _PlaceholderList(icon: Icons.notes);
   Widget _buildBookmarkList() => const _PlaceholderList(icon: Icons.bookmark);
 
@@ -630,7 +653,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               max: 28,
               onChanged: (v) async {
                 final repo = ref.read(bookRepositoryProvider);
-                await repo.saveSettings(settings.copyWith(fontSize: v.toDouble()));
+                await repo.saveSettings(
+                  settings.copyWith(fontSize: v.toDouble()),
+                );
                 setInner(() {});
                 ref.invalidate(readerSettingsProvider);
               },
@@ -753,15 +778,15 @@ class _BottomAction extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.xs,
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 22, color: textColor),
             const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(fontSize: 11, color: textColor)),
+            Text(label, style: TextStyle(fontSize: 11, color: textColor)),
           ],
         ),
       ),
@@ -782,7 +807,8 @@ class AnimatedSlideDown extends StatefulWidget {
   State<AnimatedSlideDown> createState() => _AnimatedSlideDownState();
 }
 
-class _AnimatedSlideDownState extends State<AnimatedSlideDown> with SingleTickerProviderStateMixin {
+class _AnimatedSlideDownState extends State<AnimatedSlideDown>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<Offset> _offset;
 
@@ -835,7 +861,8 @@ class AnimatedSlideUp extends StatefulWidget {
   State<AnimatedSlideUp> createState() => _AnimatedSlideUpState();
 }
 
-class _AnimatedSlideUpState extends State<AnimatedSlideUp> with SingleTickerProviderStateMixin {
+class _AnimatedSlideUpState extends State<AnimatedSlideUp>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<Offset> _offset;
 

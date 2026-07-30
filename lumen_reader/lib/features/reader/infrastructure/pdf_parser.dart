@@ -14,7 +14,7 @@ class PdfParser {
       return BookInfo(
         title: _filename(path),
         format: 'pdf',
-        totalWords: size ~~ 5,
+        totalWords: size ~ ~5,
       );
     } catch (e) {
       _logger.e('PDF extract failed: $e');

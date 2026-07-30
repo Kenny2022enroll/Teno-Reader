@@ -27,9 +27,10 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
   @override
   void initState() {
     super.initState();
-    _searchCtrl = TextEditingController()..addListener(() {
-      setState(() => _query = _searchCtrl.text);
-    });
+    _searchCtrl = TextEditingController()
+      ..addListener(() {
+        setState(() => _query = _searchCtrl.text);
+      });
   }
 
   @override
@@ -83,7 +84,10 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
   Widget _buildSearchBar(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.sm,
       ),
       child: Container(
         height: 40,
@@ -118,10 +122,7 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               }).toList();
 
         if (filtered.isEmpty) {
-          return _EmptyShelf(
-            onImport: _import,
-            isSearch: _query.isNotEmpty,
-          );
+          return _EmptyShelf(onImport: _import, isSearch: _query.isNotEmpty);
         }
         return _BookGrid(books: filtered);
       },
@@ -145,9 +146,9 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
           await repo.addBookFromFile(filePath: f.path!);
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('导入失败: ${f.name} — $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('导入失败: ${f.name} — $e')));
           }
         }
       }
@@ -164,7 +165,10 @@ class _BookGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl,
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.xl,
       ),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 160,
@@ -242,8 +246,11 @@ class _BookCardState extends ConsumerState<_BookCard> {
                       child: LinearProgressIndicator(
                         value: p?.progress ?? 0,
                         minHeight: 3,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation(
+                          theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -274,15 +281,24 @@ class _BookCardState extends ConsumerState<_BookCard> {
               title: Text(widget.book.isPinned ? '取消置顶' : '置顶'),
               onTap: () async {
                 final repo = ref.read(bookRepositoryProvider);
-                await repo.pinBook(widget.book.id, pinned: !widget.book.isPinned);
+                await repo.pinBook(
+                  widget.book.id,
+                  pinned: !widget.book.isPinned,
+                );
                 ref.invalidate(shelfBooksProvider);
                 // ignore: use_build_context_synchronously
                 Navigator.pop(sheetContext);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppPalette.lightRed),
-              title: const Text('从书架移除', style: TextStyle(color: AppPalette.lightRed)),
+              leading: const Icon(
+                Icons.delete_outline,
+                color: AppPalette.lightRed,
+              ),
+              title: const Text(
+                '从书架移除',
+                style: TextStyle(color: AppPalette.lightRed),
+              ),
               onTap: () async {
                 final repo = ref.read(bookRepositoryProvider);
                 await repo.removeBook(widget.book.id);
@@ -298,12 +314,13 @@ class _BookCardState extends ConsumerState<_BookCard> {
   }
 }
 
-final progressProvider = FutureProvider.family<ReadingProgress?, String>(
-  (ref, bookId) {
-    final repo = ref.watch(progressRepositoryProvider);
-    return repo.fetchProgress(bookId);
-  },
-);
+final progressProvider = FutureProvider.family<ReadingProgress?, String>((
+  ref,
+  bookId,
+) {
+  final repo = ref.watch(progressRepositoryProvider);
+  return repo.fetchProgress(bookId);
+});
 
 class _CoverImage extends StatelessWidget {
   const _CoverImage({required this.book});
@@ -312,9 +329,13 @@ class _CoverImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (book.coverPath != null) {
-      return Image.network(book.coverPath!, fit: BoxFit.cover, errorBuilder: (_, __, ___) {
-        return _FallbackCover(book: book);
-      });
+      return Image.network(
+        book.coverPath!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) {
+          return _FallbackCover(book: book);
+        },
+      );
     }
     return _FallbackCover(book: book);
   }
@@ -334,7 +355,8 @@ class _FallbackCover extends StatelessWidget {
       AppPalette.lightTeal.withOpacity(0.85),
       AppPalette.lightOrange.withOpacity(0.85),
     ];
-    final color = colors[book.title.codeUnits.fold(0, (a, b) => a + b) % colors.length];
+    final color =
+        colors[book.title.codeUnits.fold(0, (a, b) => a + b) % colors.length];
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
