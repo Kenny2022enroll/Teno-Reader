@@ -60,6 +60,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # --------------------------------------------------------- Platform dirs
+      # Platform folders (android/ios/macos/windows/linux) are intentionally not
+      # committed; regenerate them from the Flutter template before building.
+      - name: Ensure platform directories
+        run: flutter create --platforms android,ios,macos,windows,linux .
+
       # ------------------------------------------------------------------ Linux
       - name: Install Linux build deps
         if: matrix.target == 'linux'
@@ -69,6 +75,28 @@ jobs:
             libstdc++-12-dev clang cmake pkg-config
 
       # ---------------------------------------------------------------- Android
+      # Release APK/AAB need a signing config. Sign with the debug keystore so
+      # CI builds succeed without secrets (Play Console re-signs on upload).
+      - name: Configure Android debug signing
+        if: matrix.target == 'android-apk' || matrix.target == 'android-aab'
+        shell: bash
+        run: |
+          export PATH="$JAVA_HOME/bin:$PATH"
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          cat > android/key.properties <<EOF
+          storePassword=android
+          keyPassword=android
+          keyAlias=androiddebugkey
+          storeFile=$HOME/.android/debug.keystore
+          EOF
+
       - name: Build Android APK
         if: matrix.target == 'android-apk'
         run: flutter build apk --release --split-per-abi
