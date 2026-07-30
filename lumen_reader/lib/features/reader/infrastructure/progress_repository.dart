@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../domain/entities/reading_entities.dart';
-import '../../domain/repositories/progress_repository.dart';
-import '../../infrastructure/book_repository.dart';
-import '../storage/storage_service.dart';
+import '../domain/entities/reading_entities.dart';
+import '../domain/repositories/progress_repository.dart';
+import '../../../core/storage/storage_service.dart';
+import 'book_repository.dart';
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
   final storage = ref.watch(storageServiceProvider);

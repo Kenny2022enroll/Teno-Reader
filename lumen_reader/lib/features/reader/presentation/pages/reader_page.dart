@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,12 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_palette.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../reader/domain/entities/book_entity.dart';
-import '../../reader/domain/entities/reading_entities.dart';
-import '../../reader/infrastructure/book_repository.dart';
-import '../../reader/infrastructure/progress_repository.dart';
+import '../../../../core/theme/app_palette.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../domain/entities/book_entity.dart';
+import '../../domain/entities/reading_entities.dart';
+import '../../infrastructure/book_repository.dart';
+import '../../infrastructure/progress_repository.dart';
 
 final readerSettingsProvider = FutureProvider<SettingsPayload>((ref) {
   final repo = ref.watch(bookRepositoryProvider);
@@ -45,7 +44,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   double _currentProgress = 0;
   bool _showControls = true;
   bool _isPlayingTts = false;
-  int _ttsIndex = 0;
 
   @override
   void initState() {

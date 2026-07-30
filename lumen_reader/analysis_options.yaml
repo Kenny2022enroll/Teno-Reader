@@ -13,6 +13,9 @@ linter:
 analyzer:
   errors:
     invalid_annotation_target: ignore
+    # Code targets Flutter >=3.22; withOpacity works there but is flagged on
+    # newer stable. Silence until the minimum bumps past 3.27.
+    deprecated_member_use: ignore
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"

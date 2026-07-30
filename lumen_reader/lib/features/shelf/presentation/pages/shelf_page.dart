@@ -3,10 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_palette.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../reader/domain/entities/book_entity.dart';
-import '../../reader/infrastructure/book_repository.dart';
+import '../../../../core/theme/app_palette.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../reader/domain/entities/book_entity.dart';
+import '../../../reader/domain/entities/reading_entities.dart';
+import '../../../reader/infrastructure/book_repository.dart';
+import '../../../reader/infrastructure/progress_repository.dart';
 
 final shelfBooksProvider = FutureProvider<List<BookEntity>>((ref) async {
   final repo = ref.watch(bookRepositoryProvider);

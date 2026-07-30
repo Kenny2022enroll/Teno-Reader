@@ -4,7 +4,6 @@ import 'package:logger/logger.dart';
 
 import '../../features/reader/domain/entities/book_entity.dart';
 import '../../features/reader/domain/entities/reading_entities.dart';
-import 'hive_adapters.dart';
 import 'storage_constants.dart';
 
 /// Service layer abstraction for local persistence.
@@ -18,14 +17,13 @@ class StorageService {
 
   // MARK: - Books
 
-  HiveBox<BookEntity> get books => Hive.box<BookEntity>(kBooksBoxName);
-  HiveBox<ReadingProgress> get progress =>
+  Box<BookEntity> get books => Hive.box<BookEntity>(kBooksBoxName);
+  Box<ReadingProgress> get progress =>
       Hive.box<ReadingProgress>(kProgressBoxName);
-  HiveBox<Highlight> get highlights => Hive.box<Highlight>(kHighlightBoxName);
-  HiveBox<Bookmark> get bookmarks => Hive.box<Bookmark>(kBookmarkBoxName);
-  HiveBox<Annotation> get annotations =>
-      Hive.box<Annotation>(kAnnotationBoxName);
-  HiveBox<SettingsPayload> get settings =>
+  Box<Highlight> get highlights => Hive.box<Highlight>(kHighlightBoxName);
+  Box<Bookmark> get bookmarks => Hive.box<Bookmark>(kBookmarkBoxName);
+  Box<Annotation> get annotations => Hive.box<Annotation>(kAnnotationBoxName);
+  Box<SettingsPayload> get settings =>
       Hive.box<SettingsPayload>(kSettingsBoxName);
 
   Future<void> saveBook(BookEntity book) async {
