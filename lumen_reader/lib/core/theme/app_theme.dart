@@ -36,9 +36,8 @@ class AppTypography {
       bodyMedium: base.copyWith(fontSize: 15),
       bodySmall: base.copyWith(
         fontSize: 13,
-        color: dark
-            ? AppPalette.darkTertiaryLabel
-            : AppPalette.lightTertiaryLabel,
+        color:
+            dark ? AppPalette.darkTertiaryLabel : AppPalette.lightTertiaryLabel,
       ),
       labelLarge: base.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
       labelMedium: base.copyWith(fontSize: 13, fontWeight: FontWeight.w500),
@@ -229,13 +228,13 @@ final appThemeProvider = StateNotifierProvider<AppThemeController, AppTheme>(
 
 class AppThemeController extends StateNotifier<AppTheme> {
   AppThemeController()
-    : super(
-        AppTheme(
-          mode: ThemeMode.system,
-          light: lightPalette,
-          dark: darkPalette,
-        ),
-      );
+      : super(
+          AppTheme(
+            mode: ThemeMode.system,
+            light: lightPalette,
+            dark: darkPalette,
+          ),
+        );
 
   void setMode(ThemeMode mode) {
     state = AppTheme(mode: mode, light: state.light, dark: state.dark);
