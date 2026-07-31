@@ -64,7 +64,11 @@ jobs:
       # Platform folders (android/ios/macos/windows/linux) are intentionally not
       # committed; regenerate them from the Flutter template before building.
       - name: Ensure platform directories
-        run: flutter create --platforms android,ios,macos,windows,linux .
+        run: |
+          set -x
+          flutter create --platforms android,ios,macos,windows,linux .
+          # Re-run pub get so plugins are registered in the freshly created platform dirs.
+          flutter pub get
 
       # ----------------------------------------------------------- Android SDK
       # Newer Flutter plugins (e.g. file_picker via flutter_plugin_android_lifecycle)
@@ -73,6 +77,7 @@ jobs:
       - name: Bump Android compileSdk to 36
         if: matrix.target == 'android-apk' || matrix.target == 'android-aab'
         run: |
+          set -x
           # --- 1. gradle.properties: set flutter.compileSdkVersion / targetSdkVersion ---
           if [ -f android/gradle.properties ]; then
             sed -i -E 's/^[[:space:]]*#[[:space:]]*(flutter\.compileSdkVersion=.*)$/\1/' android/gradle.properties
@@ -107,8 +112,8 @@ jobs:
           fi
 
           # --- 3. Root build.gradle / build.gradle.kts: add subprojects override ---
-          # This forces ALL plugin subprojects (e.g. file_picker) to use compileSdk 36,
-          # preventing "file_picker is currently compiled against android-34" errors.
+          # This forces ALL plugin subprojects (e.g. file_picker) to use compileSdk 36.
+          # Gradle allows multiple subprojects blocks, so we append unconditionally.
           SUBPROJECTS_BLOCK='
 subprojects {
     afterEvaluate {
@@ -132,23 +137,13 @@ subprojects {
     }
 }
 '
-          # Root Groovy build.gradle
           if [ -f android/build.gradle ]; then
-            if ! grep -q 'subprojects' android/build.gradle; then
-              echo "$SUBPROJECTS_BLOCK" >> android/build.gradle
-              echo "--- Added subprojects override to android/build.gradle ---"
-            else
-              echo "--- subprojects block already exists in android/build.gradle ---"
-            fi
+            echo "$SUBPROJECTS_BLOCK" >> android/build.gradle
+            echo "--- Added subprojects override to android/build.gradle ---"
           fi
-          # Root Kotlin DSL build.gradle.kts
           if [ -f android/build.gradle.kts ]; then
-            if ! grep -q 'subprojects' android/build.gradle.kts; then
-              echo "$SUBPROJECTS_BLOCK_KTS" >> android/build.gradle.kts
-              echo "--- Added subprojects override to android/build.gradle.kts ---"
-            else
-              echo "--- subprojects block already exists in android/build.gradle.kts ---"
-            fi
+            echo "$SUBPROJECTS_BLOCK_KTS" >> android/build.gradle.kts
+            echo "--- Added subprojects override to android/build.gradle.kts ---"
           fi
 
           # --- 4. Print the final state of key files for debugging ---
@@ -182,6 +177,7 @@ subprojects {
         if: matrix.target == 'android-apk' || matrix.target == 'android-aab'
         shell: bash
         run: |
+          set -x
           export PATH="$JAVA_HOME/bin:$PATH"
           mkdir -p ~/.android
           if [ ! -f ~/.android/debug.keystore ]; then
@@ -191,12 +187,12 @@ subprojects {
               -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
           fi
-          cat > android/key.properties <<EOF
-          storePassword=android
-          keyPassword=android
-          keyAlias=androiddebugkey
-          storeFile=$HOME/.android/debug.keystore
-          EOF
+          cat > android/key.properties <<PROPS
+storePassword=android
+keyPassword=android
+keyAlias=androiddebugkey
+storeFile=${HOME}/.android/debug.keystore
+PROPS
 
       - name: Build Android APK
         if: matrix.target == 'android-apk'
@@ -207,18 +203,18 @@ subprojects {
         run: flutter build appbundle --release
 
       # ------------------------------------------------------------------- iOS
+      # Build an unsigned release bundle for real devices (simulator builds are
+      # debug-only and unsuitable for release artifacts).
       - name: Build iOS (no codesign)
         if: matrix.target == 'ios'
-        run: flutter build ios --release --no-codesign --simulator
+        run: flutter build ios --release --no-codesign
 
       - name: Archive iOS build
         if: matrix.target == 'ios'
         run: |
           mkdir -p ../artifacts
-          cd build/ios/iphoneos || cd build/ios/iphonesimulator
+          cd build/ios/iphoneos
           zip -rq ../../../artifacts/ios-build.zip .
-          cd -
-          cp -r build/ios/iphoneos ../artifacts/ios-build-output 2>/dev/null || true
 
       # ------------------------------------------------------------------- macOS
       - name: Build macOS
