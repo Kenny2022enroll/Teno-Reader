@@ -70,16 +70,33 @@ jobs:
       # Newer Flutter plugins (e.g. file_picker via flutter_plugin_android_lifecycle)
       # require compileSdk >= 36, but the Flutter template default is still 34.
       # Patch the regenerated android config so the build passes.
+      #
+      # Note: the Flutter-generated gradle.properties ships the SDK version lines
+      # commented out (prefixed with '#'), so a naive 's/^flutter\...' sed does
+      # not match them. We strip any leading '#' before flutter.compileSdkVersion
+      # / flutter.targetSdkVersion AND then append explicit overrides at the
+      # end of the file so Gradle picks them up regardless.
       - name: Bump Android compileSdk to 36
         if: matrix.target == 'android-apk' || matrix.target == 'android-aab'
         run: |
-          # Flutter 3.19+ exposes SDK versions via gradle.properties variables
           if [ -f android/gradle.properties ]; then
+            # Uncomment any existing flutter.compileSdkVersion / flutter.targetSdkVersion lines
+            # (Flutter 3.19+ templates ship them commented out).
+            sed -i -E 's/^[[:space:]]*#[[:space:]]*(flutter\.compileSdkVersion=.*)$/\1/' android/gradle.properties
+            sed -i -E 's/^[[:space:]]*#[[:space:]]*(flutter\.targetSdkVersion=.*)$/\1/' android/gradle.properties
+            # Overwrite any uncommented lines to use SDK 36 (idempotent).
             sed -i 's/^flutter\.compileSdkVersion=.*$/flutter.compileSdkVersion=36/' android/gradle.properties
-            # Keep targetSdk in sync with compileSdk to avoid other plugin warnings
             sed -i 's/^flutter\.targetSdkVersion=.*$/flutter.targetSdkVersion=36/' android/gradle.properties
+            # If the property is still missing, append it at the end of the file.
+            grep -q '^flutter\.compileSdkVersion=' android/gradle.properties \
+              || echo 'flutter.compileSdkVersion=36' >> android/gradle.properties
+            grep -q '^flutter\.targetSdkVersion=' android/gradle.properties \
+              || echo 'flutter.targetSdkVersion=36' >> android/gradle.properties
+            echo "--- android/gradle.properties after patch ---"
+            cat android/gradle.properties
           fi
           # Fallback: if build.gradle hard-codes the values, update them directly
+          # (older Flutter templates or projects that don't use gradle.properties).
           if [ -f android/app/build.gradle ]; then
             sed -i -E 's/compileSdk\s+[0-9]+/compileSdk 36/g' android/app/build.gradle
             sed -i -E 's/targetSdk(Version)?\s+[0-9]+/targetSdk\1 36/g' android/app/build.gradle
