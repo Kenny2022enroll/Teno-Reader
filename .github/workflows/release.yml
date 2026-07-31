@@ -66,6 +66,20 @@ jobs:
       - name: Ensure platform directories
         run: flutter create --platforms android,ios,macos,windows,linux .
 
+      # Newer versions of flutter_plugin_android_lifecycle (pulled in by
+      # file_picker, flutter_tts, ...) require compileSdk >= 36.  flutter create
+      # still generates the project with compileSdk 34, so bump it here.
+      - name: Update Android compileSdk
+        if: matrix.target == 'android-apk' || matrix.target == 'android-aab'
+        shell: bash
+        run: |
+          for f in android/app/build.gradle.kts android/app/build.gradle; do
+            if [ -f "$f" ]; then
+              sed -i '/compileSdk/s/= [0-9]\+/= 36/' "$f"
+              sed -i '/targetSdk/s/= [0-9]\+/= 36/' "$f"
+            fi
+          done
+
       # ------------------------------------------------------------------ Linux
       - name: Install Linux build deps
         if: matrix.target == 'linux'
