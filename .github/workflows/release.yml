@@ -116,33 +116,20 @@ jobs:
           # Gradle allows multiple subprojects blocks, so we append unconditionally.
           SUBPROJECTS_BLOCK='
           subprojects {
-              plugins.withId("com.android.application") {
-                  android {
-                      compileSdkVersion 36
-                      defaultConfig {
-                          targetSdkVersion 36
-                      }
-                  }
-              }
-              plugins.withId("com.android.library") {
-                  android {
-                      compileSdkVersion 36
+              afterEvaluate { project ->
+                  if (project.hasProperty("android")) {
+                      project.android.compileSdkVersion 36
                   }
               }
           }
           '
           SUBPROJECTS_BLOCK_KTS='
           subprojects {
-              project.plugins.withId("com.android.application") {
-                  project.extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
-                      compileSdk = 36
-                      defaultConfig.targetSdk = 36
-                  }
-              }
-              project.plugins.withId("com.android.library") {
-                  project.extensions.configure<com.android.build.api.dsl.LibraryExtension> {
-                      compileSdk = 36
-                  }
+              afterEvaluate {
+                  try {
+                      val androidExt = extensions.findByName("android") ?: return@afterEvaluate
+                      (androidExt as com.android.build.gradle.BaseExtension).compileSdkVersion("android-36")
+                  } catch (e: Exception) { }
               }
           }
           '
