@@ -132,16 +132,12 @@ jobs:
           SUBPROJECTS_BLOCK_KTS='
           subprojects {
               if (project.state.executed) {
-                  try {
-                      val androidExt = extensions.findByName("android") ?: return
-                      (androidExt as com.android.build.gradle.BaseExtension).compileSdkVersion("android-36")
-                  } catch (e: Exception) { }
+                  try { extensions.configure<com.android.build.api.dsl.LibraryExtension> { compileSdk = 36 } } catch (_: Exception) { }
+                  try { extensions.configure<com.android.build.api.dsl.ApplicationExtension> { compileSdk = 36 } } catch (_: Exception) { }
               } else {
                   afterEvaluate {
-                      try {
-                          val androidExt = extensions.findByName("android") ?: return@afterEvaluate
-                          (androidExt as com.android.build.gradle.BaseExtension).compileSdkVersion("android-36")
-                      } catch (e: Exception) { }
+                      try { extensions.configure<com.android.build.api.dsl.LibraryExtension> { compileSdk = 36 } } catch (_: Exception) { }
+                      try { extensions.configure<com.android.build.api.dsl.ApplicationExtension> { compileSdk = 36 } } catch (_: Exception) { }
                   }
               }
           }
