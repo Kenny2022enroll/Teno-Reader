@@ -115,28 +115,28 @@ jobs:
           # This forces ALL plugin subprojects (e.g. file_picker) to use compileSdk 36.
           # Gradle allows multiple subprojects blocks, so we append unconditionally.
           SUBPROJECTS_BLOCK='
-subprojects {
-    afterEvaluate {
-        if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
-            project.android {
-                compileSdkVersion 36
-            }
-        }
-    }
-}
-'
+          subprojects {
+              afterEvaluate {
+                  if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
+                      project.android {
+                          compileSdkVersion 36
+                      }
+                  }
+              }
+          }
+          '
           SUBPROJECTS_BLOCK_KTS='
-subprojects {
-    afterEvaluate {
-        if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
-            try {
-                val ext = project.extensions.getByType<com.android.build.gradle.BaseExtension>()
-                ext.compileSdk = 36
-            } catch (_: Exception) { }
-        }
-    }
-}
-'
+          subprojects {
+              afterEvaluate {
+                  if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
+                      try {
+                          val ext = project.extensions.getByType<com.android.build.gradle.BaseExtension>()
+                          ext.compileSdk = 36
+                      } catch (_: Exception) { }
+                  }
+              }
+          }
+          '
           if [ -f android/build.gradle ]; then
             echo "$SUBPROJECTS_BLOCK" >> android/build.gradle
             echo "--- Added subprojects override to android/build.gradle ---"
@@ -187,12 +187,12 @@ subprojects {
               -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
           fi
-          cat > android/key.properties <<PROPS
-storePassword=android
-keyPassword=android
-keyAlias=androiddebugkey
-storeFile=${HOME}/.android/debug.keystore
-PROPS
+          printf '%s\n' \
+            'storePassword=android' \
+            'keyPassword=android' \
+            'keyAlias=androiddebugkey' \
+            "storeFile=${HOME}/.android/debug.keystore" \
+            > android/key.properties
 
       - name: Build Android APK
         if: matrix.target == 'android-apk'
