@@ -217,9 +217,9 @@ jobs:
       - name: Archive iOS build
         if: matrix.target == 'ios'
         run: |
-          mkdir -p ../artifacts
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
           cd build/ios/iphoneos
-          zip -rq ../../../artifacts/ios-build.zip .
+          zip -rq "$GITHUB_WORKSPACE/artifacts/ios-build.zip" .
 
       # ------------------------------------------------------------------- macOS
       - name: Build macOS
@@ -229,10 +229,10 @@ jobs:
       - name: Archive macOS app
         if: matrix.target == 'macos'
         run: |
-          mkdir -p ../artifacts
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
           ditto -c -k --sequesterRsrc --keepParent \
             build/macos/Build/Products/Release/*.app \
-            ../artifacts/macos-app.zip
+            "$GITHUB_WORKSPACE/artifacts/macos-app.zip"
 
       # ---------------------------------------------------------------- Windows
       - name: Build Windows
@@ -243,12 +243,14 @@ jobs:
         if: matrix.target == 'windows'
         shell: pwsh
         run: |
+          $artifactsDir = "$env:GITHUB_WORKSPACE\artifacts"
+          New-Item -ItemType Directory -Force -Path $artifactsDir | Out-Null
           $src = "build\windows\x64\runner\Release"
           if (-not (Test-Path $src)) {
             $src = Get-ChildItem -Path "build\windows" -Recurse -Directory -Filter "Release" |
               Select-Object -First 1 -ExpandProperty FullName
           }
-          Compress-Archive -Path "$src\*" -DestinationPath "..\artifacts\windows-build.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath "$artifactsDir\windows-build.zip"
 
       # ------------------------------------------------------------------ Linux
       - name: Build Linux
@@ -258,9 +260,9 @@ jobs:
       - name: Archive Linux build
         if: matrix.target == 'linux'
         run: |
-          mkdir -p ../artifacts
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
           cd build/linux/x64/release/bundle
-          tar -czf ../../../../artifacts/linux-build.tar.gz .
+          tar -czf "$GITHUB_WORKSPACE/artifacts/linux-build.tar.gz" .
 
       # ----------------------------------------------------------- Upload step
       - name: Normalize artifact name
@@ -268,12 +270,12 @@ jobs:
         shell: bash
         run: |
           case "${{ matrix.target }}" in
-            android-apk) ext="apk"; files="build/app/outputs/flutter-apk/*.apk" ;;
-            android-aab) ext="aab"; files="build/app/outputs/bundle/release/app-release.aab" ;;
-            ios)         ext="zip"; files="../artifacts/ios-build.zip" ;;
-            macos)       ext="zip"; files="../artifacts/macos-app.zip" ;;
-            windows)     ext="zip"; files="../artifacts/windows-build.zip" ;;
-            linux)       ext="tar.gz"; files="../artifacts/linux-build.tar.gz" ;;
+            android-apk) ext="apk"; files="lumen_reader/build/app/outputs/flutter-apk/*.apk" ;;
+            android-aab) ext="aab"; files="lumen_reader/build/app/outputs/bundle/release/app-release.aab" ;;
+            ios)         ext="zip"; files="artifacts/ios-build.zip" ;;
+            macos)       ext="zip"; files="artifacts/macos-app.zip" ;;
+            windows)     ext="zip"; files="artifacts/windows-build.zip" ;;
+            linux)       ext="tar.gz"; files="artifacts/linux-build.tar.gz" ;;
           esac
           echo "files=$files" >> $GITHUB_OUTPUT
           echo "ext=$ext" >> $GITHUB_OUTPUT
