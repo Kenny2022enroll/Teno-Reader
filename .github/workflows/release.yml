@@ -130,8 +130,9 @@ jobs:
               afterEvaluate {
                   if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
                       try {
-                          val ext = project.extensions.getByType<com.android.build.gradle.BaseExtension>()
+                          val ext = project.extensions.getByType<com.android.build.api.dsl.CommonExtension>()
                           ext.compileSdk = 36
+                          ext.targetSdk = 36
                       } catch (_: Exception) { }
                   }
               }
