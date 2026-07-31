@@ -66,6 +66,25 @@ jobs:
       - name: Ensure platform directories
         run: flutter create --platforms android,ios,macos,windows,linux .
 
+      # ----------------------------------------------------------- Android SDK
+      # Newer Flutter plugins (e.g. file_picker via flutter_plugin_android_lifecycle)
+      # require compileSdk >= 36, but the Flutter template default is still 34.
+      # Patch the regenerated android config so the build passes.
+      - name: Bump Android compileSdk to 36
+        if: matrix.target == 'android-apk' || matrix.target == 'android-aab'
+        run: |
+          # Flutter 3.19+ exposes SDK versions via gradle.properties variables
+          if [ -f android/gradle.properties ]; then
+            sed -i 's/^flutter\.compileSdkVersion=.*$/flutter.compileSdkVersion=36/' android/gradle.properties
+            # Keep targetSdk in sync with compileSdk to avoid other plugin warnings
+            sed -i 's/^flutter\.targetSdkVersion=.*$/flutter.targetSdkVersion=36/' android/gradle.properties
+          fi
+          # Fallback: if build.gradle hard-codes the values, update them directly
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/compileSdk\s+[0-9]+/compileSdk 36/g' android/app/build.gradle
+            sed -i -E 's/targetSdk(Version)?\s+[0-9]+/targetSdk\1 36/g' android/app/build.gradle
+          fi
+
       # ------------------------------------------------------------------ Linux
       - name: Install Linux build deps
         if: matrix.target == 'linux'
