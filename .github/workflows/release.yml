@@ -116,32 +116,33 @@ jobs:
           # Gradle allows multiple subprojects blocks, so we append unconditionally.
           SUBPROJECTS_BLOCK='
           subprojects {
-              afterEvaluate {
-                  if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
-                      project.android {
-                          compileSdkVersion 36
-                          defaultConfig {
-                              targetSdkVersion 36
-                          }
+              plugins.withId("com.android.application") {
+                  android {
+                      compileSdkVersion 36
+                      defaultConfig {
+                          targetSdkVersion 36
                       }
+                  }
+              }
+              plugins.withId("com.android.library") {
+                  android {
+                      compileSdkVersion 36
                   }
               }
           }
           '
           SUBPROJECTS_BLOCK_KTS='
           subprojects {
-              afterEvaluate {
-                  try {
-                      project.extensions.findByType(com.android.build.api.dsl.ApplicationExtension::class.java)?.let { ext ->
-                          try { ext.compileSdk = 36 } catch (_: Exception) { }
-                          try { ext.defaultConfig.targetSdk = 36 } catch (_: Exception) { }
-                      }
-                  } catch (_: Exception) { }
-                  try {
-                      project.extensions.findByType(com.android.build.api.dsl.LibraryExtension::class.java)?.let { ext ->
-                          try { ext.compileSdk = 36 } catch (_: Exception) { }
-                      }
-                  } catch (_: Exception) { }
+              project.plugins.withId("com.android.application") {
+                  project.extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
+                      compileSdk = 36
+                      defaultConfig.targetSdk = 36
+                  }
+              }
+              project.plugins.withId("com.android.library") {
+                  project.extensions.configure<com.android.build.api.dsl.LibraryExtension> {
+                      compileSdk = 36
+                  }
               }
           }
           '
