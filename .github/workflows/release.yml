@@ -120,6 +120,9 @@ jobs:
                   if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
                       project.android {
                           compileSdkVersion 36
+                          defaultConfig {
+                              targetSdkVersion 36
+                          }
                       }
                   }
               }
@@ -128,13 +131,18 @@ jobs:
           SUBPROJECTS_BLOCK_KTS='
           subprojects {
               afterEvaluate {
-                  if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
-                      try {
-                          val ext = project.extensions.getByType<com.android.build.api.dsl.CommonExtension>()
-                          ext.compileSdk = 36
-                          ext.targetSdk = 36
-                      } catch (_: Exception) { }
-                  }
+                  try {
+                      project.extensions.findByType(com.android.build.api.dsl.ApplicationExtension::class.java)?.let {
+                          it.compileSdk = 36
+                          it.defaultConfig.targetSdk = 36
+                      }
+                  } catch (_: Exception) { }
+                  try {
+                      project.extensions.findByType(com.android.build.api.dsl.LibraryExtension::class.java)?.let {
+                          it.compileSdk = 36
+                          it.defaultConfig.targetSdk = 36
+                      }
+                  } catch (_: Exception) { }
               }
           }
           '
