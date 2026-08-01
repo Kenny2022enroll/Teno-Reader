@@ -32,7 +32,7 @@ class PdfParser {
 
       final buffer = StringBuffer();
       for (int i = 0; i < document.pages.count; i++) {
-        final text = extractor.extractTextFromPage(i);
+        final text = extractor.extractText(startIndex: i, endIndex: i);
         if (text.isNotEmpty) {
           if (buffer.isNotEmpty) buffer.write('\n\n');
           buffer.write(text);
