@@ -293,16 +293,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
-  Widget _buildChapter(BookEntity book, int index, SettingsPayload? settings) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: MediaQuery.of(context).padding.top + AppSpacing.md,
-      ),
-      child: _buildChapterBody(book, index, settings),
-    );
-  }
-
   Widget _buildChapterBody(
     BookEntity book,
     int chapterIndex,
