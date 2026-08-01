@@ -53,13 +53,13 @@ class ReadingProgressAdapter extends TypeAdapter<ReadingProgress> {
 
   @override
   ReadingProgress read(BinaryReader r) => ReadingProgress(
-        bookId: r.readString(),
-        chapterId: r.readString(),
-        progress: r.readDouble(),
-        scrollOffset: r.readInt(),
-        totalWordsRead: r.readInt(),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
-      );
+    bookId: r.readString(),
+    chapterId: r.readString(),
+    progress: r.readDouble(),
+    scrollOffset: r.readInt(),
+    totalWordsRead: r.readInt(),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+  );
 
   @override
   void write(BinaryWriter w, ReadingProgress obj) {
@@ -78,15 +78,15 @@ class HighlightAdapter extends TypeAdapter<Highlight> {
 
   @override
   Highlight read(BinaryReader r) => Highlight(
-        id: r.readString(),
-        bookId: r.readString(),
-        chapterId: r.readString(),
-        selectedText: r.readString(),
-        startOffset: r.readInt(),
-        endOffset: r.readInt(),
-        color: r.readString(),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
-      );
+    id: r.readString(),
+    bookId: r.readString(),
+    chapterId: r.readString(),
+    selectedText: r.readString(),
+    startOffset: r.readInt(),
+    endOffset: r.readInt(),
+    color: r.readString(),
+    createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+  );
 
   @override
   void write(BinaryWriter w, Highlight obj) {
@@ -107,13 +107,13 @@ class BookmarkAdapter extends TypeAdapter<Bookmark> {
 
   @override
   Bookmark read(BinaryReader r) => Bookmark(
-        id: r.readString(),
-        bookId: r.readString(),
-        chapterId: r.readString(),
-        scrollOffset: r.readInt(),
-        snippet: r.readString(),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
-      );
+    id: r.readString(),
+    bookId: r.readString(),
+    chapterId: r.readString(),
+    scrollOffset: r.readInt(),
+    snippet: r.readString(),
+    createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+  );
 
   @override
   void write(BinaryWriter w, Bookmark obj) {
@@ -132,17 +132,17 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
 
   @override
   Annotation read(BinaryReader r) => Annotation(
-        id: r.readString(),
-        bookId: r.readString(),
-        chapterId: r.readString(),
-        anchorText: r.readString(),
-        offset: r.readInt(),
-        note: r.readString(),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
-        updatedAt: r.readBool()
-            ? DateTime.fromMillisecondsSinceEpoch(r.readInt())
-            : null,
-      );
+    id: r.readString(),
+    bookId: r.readString(),
+    chapterId: r.readString(),
+    anchorText: r.readString(),
+    offset: r.readInt(),
+    note: r.readString(),
+    createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+    updatedAt: r.readBool()
+        ? DateTime.fromMillisecondsSinceEpoch(r.readInt())
+        : null,
+  );
 
   @override
   void write(BinaryWriter w, Annotation obj) {
@@ -166,18 +166,18 @@ class SettingsPayloadAdapter extends TypeAdapter<SettingsPayload> {
 
   @override
   SettingsPayload read(BinaryReader r) => SettingsPayload(
-        fontSize: r.readDouble(),
-        fontFamily: r.readString(),
-        theme: r.readString(),
-        autoNightMode: r.readBool(),
-        lineHeight: r.readDouble(),
-        paragraphSpacing: r.readDouble(),
-        pageTurnStyle: r.readString(),
-        keepScreenAwake: r.readBool(),
-        syncEnabled: r.readBool(),
-        reducedMotion: r.readBool(),
-        largeText: r.readBool(),
-      );
+    fontSize: r.readDouble(),
+    fontFamily: r.readString(),
+    theme: r.readString(),
+    autoNightMode: r.readBool(),
+    lineHeight: r.readDouble(),
+    paragraphSpacing: r.readDouble(),
+    pageTurnStyle: r.readString(),
+    keepScreenAwake: r.readBool(),
+    syncEnabled: r.readBool(),
+    reducedMotion: r.readBool(),
+    largeText: r.readBool(),
+  );
 
   @override
   void write(BinaryWriter w, SettingsPayload obj) {

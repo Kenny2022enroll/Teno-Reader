@@ -12,6 +12,7 @@ import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/book_entity.dart';
 import '../../domain/entities/reading_entities.dart';
+import '../../domain/repositories/progress_repository.dart';
 import '../../infrastructure/book_repository.dart';
 import '../../infrastructure/epub_parser.dart';
 import '../../infrastructure/pdf_parser.dart';
@@ -76,7 +77,8 @@ class ReaderPage extends ConsumerStatefulWidget {
   ConsumerState<ReaderPage> createState() => _ReaderPageState();
 }
 
-class _ReaderPageState extends ConsumerState<ReaderPage> {
+class _ReaderPageState extends ConsumerState<ReaderPage>
+    with WidgetsBindingObserver {
   late final ScrollController _scrollCtrl;
   late final PageController _pageCtrl;
   final FlutterTts _tts = FlutterTts();
@@ -90,9 +92,17 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   bool _isPlayingTts = false;
   bool _isLoading = true;
 
+  // Cached for safe dispose-time save (ref is not usable after dispose).
+  BookEntity? _loadedBook;
+  ProgressRepository? _progressRepo;
+  // Pending scroll restore (in px) — applied once the scroll view has clients.
+  double _pendingScrollOffset = 0;
+  bool _hasPendingRestore = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollCtrl = ScrollController()..addListener(_onScroll);
     _pageCtrl = PageController();
     _initTts();
@@ -101,10 +111,24 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   @override
   void dispose() {
+    // Best-effort final save before tearing down. Fire-and-forget; we cache
+    // book/repo in instance fields so we don't touch `ref` after dispose.
+    _saveProgressNow();
+    WidgetsBinding.instance.removeObserver(this);
     _scrollCtrl.dispose();
     _pageCtrl.dispose();
     _tts.stop();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Persist progress when the app is backgrounded so the user resumes
+    // from the right spot even if they don't explicitly exit the reader.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _persistProgress();
+    }
   }
 
   Future<void> _initTts() async {
@@ -119,8 +143,11 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       return;
     }
 
-    final progressRepo = ref.read(progressRepositoryProvider);
-    final saved = await progressRepo.fetchProgress(book.id);
+    // Cache for safe dispose-time save (ref cannot be used after dispose).
+    _loadedBook = book;
+    _progressRepo = ref.read(progressRepositoryProvider);
+
+    final saved = await _progressRepo!.fetchProgress(book.id);
 
     try {
       if (book.format == 'epub') {
@@ -141,9 +168,18 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     }
 
     if (saved != null) {
-      _currentChapter = _chapters.indexWhere((c) => c == saved.chapterId);
-      if (_currentChapter == -1) _currentChapter = 0;
+      // Prefer the new index-based format; fall back to title match for
+      // progress records saved by older app versions.
+      final parsed = int.tryParse(saved.chapterId);
+      if (parsed != null && parsed >= 0 && parsed < _chapters.length) {
+        _currentChapter = parsed;
+      } else {
+        final byTitle = _chapters.indexOf(saved.chapterId);
+        _currentChapter = byTitle >= 0 ? byTitle : 0;
+      }
       _currentProgress = saved.progress;
+      _pendingScrollOffset = saved.scrollOffset.toDouble();
+      _hasPendingRestore = true;
     }
 
     final repo = ref.read(bookRepositoryProvider);
@@ -151,10 +187,29 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
     if (mounted) {
       setState(() => _isLoading = false);
-      if (saved != null && _scrollCtrl.hasClients) {
-        _scrollCtrl.jumpTo(saved.scrollOffset.toDouble());
+      // Scroll position can only be applied after the new widget tree is
+      // built and the ScrollController has clients. Defer to next frame.
+      if (_hasPendingRestore) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _applyPendingRestore();
+        });
       }
     }
+  }
+
+  void _applyPendingRestore() {
+    if (!_hasPendingRestore) return;
+    if (!_scrollCtrl.hasClients) {
+      // Not attached yet — try again on the next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _applyPendingRestore();
+      });
+      return;
+    }
+    final max = _scrollCtrl.position.maxScrollExtent;
+    final target = _pendingScrollOffset.clamp(0.0, max);
+    _scrollCtrl.jumpTo(target);
+    _hasPendingRestore = false;
   }
 
   Future<void> _loadEpubChapters(BookEntity book) async {
@@ -192,22 +247,41 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       return;
     }
     _lastSave = now;
+    await _persistProgress();
+  }
 
-    final bookAsync = ref.read(readerBookProvider(widget.bookId));
-    final book = bookAsync.valueOrNull;
-    if (book == null) return;
-
-    final repo = ref.read(progressRepositoryProvider);
-    await repo.saveProgress(
-      ReadingProgress(
-        bookId: book.id,
-        chapterId: _chapters.isNotEmpty ? _chapters[_currentChapter] : '',
-        progress: _currentProgress,
-        scrollOffset: _scrollCtrl.hasClients ? _scrollCtrl.offset.toInt() : 0,
-        totalWordsRead: (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0),
-        updatedAt: now,
-      ),
+  /// Builds a [ReadingProgress] snapshot from the current state.
+  /// `chapterId` stores the chapter **index** (as a string) so that restore
+  /// is deterministic even when chapter titles change or duplicate.
+  ReadingProgress _buildProgress() {
+    final book = _loadedBook;
+    final offset = _scrollCtrl.hasClients ? _scrollCtrl.offset.toInt() : 0;
+    return ReadingProgress(
+      bookId: book?.id ?? widget.bookId,
+      chapterId: _currentChapter.toString(),
+      progress: _currentProgress,
+      scrollOffset: offset,
+      totalWordsRead: offset ~/ 20,
+      updatedAt: DateTime.now(),
     );
+  }
+
+  Future<void> _persistProgress() async {
+    final book = _loadedBook;
+    final repo = _progressRepo;
+    if (book == null || repo == null) return;
+    await repo.saveProgress(_buildProgress());
+  }
+
+  /// Synchronous best-effort save used from [dispose]. Uses cached
+  /// book/repo so it does not touch `ref` after the widget is unmounted.
+  void _saveProgressNow() {
+    final repo = _progressRepo;
+    final book = _loadedBook;
+    if (repo == null || book == null) return;
+    // Fire-and-forget; the Future completes after dispose is safe because
+    // we only use the cached repo, not `ref`.
+    repo.saveProgress(_buildProgress());
   }
 
   @override
@@ -265,7 +339,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       return PageView.builder(
         controller: _pageCtrl,
         itemCount: _chapters.length,
-        onPageChanged: (i) => setState(() => _currentChapter = i),
+        onPageChanged: (i) {
+          setState(() {
+            _currentChapter = i;
+            _currentProgress = 0;
+          });
+          _persistProgress();
+        },
         itemBuilder: (context, index) {
           return SingleChildScrollView(
             padding: EdgeInsets.symmetric(
@@ -354,7 +434,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                         _currentProgress = 0;
                       });
                       _scrollCtrl.jumpTo(0);
-                      _autoSaveProgress();
+                      // Save immediately — chapter change must be persisted
+                      // even if a recent scroll save happened.
+                      _persistProgress();
                     }
                   : null,
               icon: const Icon(Icons.arrow_back_ios_rounded),
@@ -371,7 +453,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                         _currentProgress = 0;
                       });
                       _scrollCtrl.jumpTo(0);
-                      _autoSaveProgress();
+                      _persistProgress();
                     }
                   : null,
               icon: const Icon(Icons.arrow_forward_ios_rounded),

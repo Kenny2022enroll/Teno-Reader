@@ -79,47 +79,47 @@ class BookEntity extends Equatable {
   }
 
   factory BookEntity.fromJson(Map<String, dynamic> json) => BookEntity(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        author: json['author'] as String,
-        coverPath: json['coverPath'] as String?,
-        description: json['description'] as String?,
-        filePath: json['filePath'] as String,
-        format: json['format'] as String,
-        totalWords: json['totalWords'] as int?,
-        addedAt: DateTime.parse(json['addedAt'] as String),
-        lastReadAt: json['lastReadAt'] == null
-            ? null
-            : DateTime.parse(json['lastReadAt'] as String),
-        isPinned: json['isPinned'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    title: json['title'] as String,
+    author: json['author'] as String,
+    coverPath: json['coverPath'] as String?,
+    description: json['description'] as String?,
+    filePath: json['filePath'] as String,
+    format: json['format'] as String,
+    totalWords: json['totalWords'] as int?,
+    addedAt: DateTime.parse(json['addedAt'] as String),
+    lastReadAt: json['lastReadAt'] == null
+        ? null
+        : DateTime.parse(json['lastReadAt'] as String),
+    isPinned: json['isPinned'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'author': author,
-        'coverPath': coverPath,
-        'description': description,
-        'filePath': filePath,
-        'format': format,
-        'totalWords': totalWords,
-        'addedAt': addedAt.toIso8601String(),
-        'lastReadAt': lastReadAt?.toIso8601String(),
-        'isPinned': isPinned,
-      };
+    'id': id,
+    'title': title,
+    'author': author,
+    'coverPath': coverPath,
+    'description': description,
+    'filePath': filePath,
+    'format': format,
+    'totalWords': totalWords,
+    'addedAt': addedAt.toIso8601String(),
+    'lastReadAt': lastReadAt?.toIso8601String(),
+    'isPinned': isPinned,
+  };
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        author,
-        coverPath,
-        description,
-        filePath,
-        format,
-        totalWords,
-        addedAt,
-        lastReadAt,
-        isPinned,
-      ];
+    id,
+    title,
+    author,
+    coverPath,
+    description,
+    filePath,
+    format,
+    totalWords,
+    addedAt,
+    lastReadAt,
+    isPinned,
+  ];
 }
