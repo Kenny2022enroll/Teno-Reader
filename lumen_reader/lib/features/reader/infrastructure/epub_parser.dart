@@ -29,7 +29,8 @@ class EpubParser {
     final opfDoc = XmlDocument.parse(String.fromCharCodes(opf.content));
     final title = _text(opfDoc, ['dc:title', 'title']) ?? 'Unknown';
     final author = _text(opfDoc, ['dc:creator', 'creator']);
-    final description = _text(opfDoc, ['dc:description', 'description']);
+    final description =
+        _text(opfDoc, ['dc:description', 'description']);
 
     String? coverHref;
     final meta = opfDoc.findElements('meta');
@@ -47,8 +48,9 @@ class EpubParser {
       final dir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
       final file = archive.findFile('$dir$coverHref');
       if (file != null) {
+        final ts = DateTime.now().millisecondsSinceEpoch;
         final tmp = File(
-          '${Directory.systemTemp.path}/lumen_cover_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          '${Directory.systemTemp.path}/lumen_cover_$ts.jpg',
         );
         tmp.writeAsBytesSync(file.content as Uint8List);
         coverPath = tmp.path;
@@ -180,10 +182,21 @@ class EpubParser {
       } else if (child is XmlElement) {
         final tag = child.name.local.toLowerCase();
         buffer.write(_extractText(child));
-        if ([
-          'p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-          'li', 'tr', 'blockquote', 'section',
-        ].contains(tag)) {
+        if (const {
+          'p',
+          'div',
+          'br',
+          'h1',
+          'h2',
+          'h3',
+          'h4',
+          'h5',
+          'h6',
+          'li',
+          'tr',
+          'blockquote',
+          'section',
+        }.contains(tag)) {
           buffer.write('\n');
         }
       }
