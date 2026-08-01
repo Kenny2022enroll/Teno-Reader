@@ -5,21 +5,21 @@ import 'package:xml/xml.dart';
 
 import '../domain/repositories/book_repository.dart';
 
+/// A parsed EPUB chapter: title + plain-text content.
+class EpubChapter {
+  final String title;
+  final String content;
+  const EpubChapter({required this.title, required this.content});
+}
+
 /// Lightweight EPUB metadata / content extractor.
-/// Full rendering is delegated to a dedicated epub widget in production;
-/// here we only pull metadata + plain-text chapter content.
 class EpubParser {
   Future<BookInfo> extract(String path) async {
-    final bytes = File(path).readAsBytesSync();
-    final archive = ZipDecoder().decodeBytes(bytes);
-
-    String? opfPath;
-    final container = archive.findFile('META-INF/container.xml');
-    if (container != null) {
-      final xml = XmlDocument.parse(String.fromCharCodes(container.content));
-      opfPath = xml.findElements('rootfile').first.getAttribute('full-path');
+    final archive = _openArchive(path);
+    final opfPath = _findOpfPath(archive);
+    if (opfPath == null) {
+      return const BookInfo(title: 'Unknown', format: 'epub');
     }
-    opfPath ??= 'OEBPS/content.opf';
 
     final opf = archive.findFile(opfPath);
     if (opf == null) {
@@ -64,16 +64,143 @@ class EpubParser {
     );
   }
 
+  /// Extract all chapters from an EPUB file in spine order.
+  Future<List<EpubChapter>> extractChapters(String path) async {
+    final archive = _openArchive(path);
+    final opfPath = _findOpfPath(archive);
+    if (opfPath == null) return [];
+
+    final opf = archive.findFile(opfPath);
+    if (opf == null) return [];
+
+    final opfDoc = XmlDocument.parse(String.fromCharCodes(opf.content));
+    final opfDir = opfPath.contains('/')
+        ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
+        : '';
+
+    // Build manifest map: id -> href
+    final manifest = <String, String>{};
+    final manifestEl = opfDoc.findAllElements('manifest');
+    if (manifestEl.isNotEmpty) {
+      for (final item in manifestEl.first.children.whereType<XmlElement>()) {
+        final id = item.getAttribute('id');
+        final href = item.getAttribute('href');
+        if (id != null && href != null) {
+          manifest[id] = href;
+        }
+      }
+    }
+
+    // Get spine order (reading order)
+    final spineEl = opfDoc.findAllElements('spine');
+    if (spineEl.isEmpty) return [];
+
+    final chapters = <EpubChapter>[];
+    for (final itemref in spineEl.first.children.whereType<XmlElement>()) {
+      final idref = itemref.getAttribute('idref');
+      if (idref == null || !manifest.containsKey(idref)) continue;
+
+      final href = manifest[idref]!;
+      final filePath = '$opfDir$href';
+      final file = archive.findFile(filePath);
+      if (file == null) continue;
+
+      final html = String.fromCharCodes(file.content);
+      chapters.add(_parseHtmlChapter(html));
+    }
+
+    return chapters;
+  }
+
+  Archive _openArchive(String path) {
+    final bytes = File(path).readAsBytesSync();
+    return ZipDecoder().decodeBytes(bytes);
+  }
+
+  String? _findOpfPath(Archive archive) {
+    final container = archive.findFile('META-INF/container.xml');
+    if (container != null) {
+      final xml = XmlDocument.parse(String.fromCharCodes(container.content));
+      final rootfiles = xml.findAllElements('rootfile');
+      if (rootfiles.isNotEmpty) {
+        return rootfiles.first.getAttribute('full-path');
+      }
+    }
+    return 'OEBPS/content.opf';
+  }
+
+  EpubChapter _parseHtmlChapter(String html) {
+    String title = '';
+    String content = '';
+
+    try {
+      final doc = XmlDocument.parse(html);
+
+      // Try <title> tag
+      final titleEls = doc.findAllElements('title');
+      if (titleEls.isNotEmpty) {
+        title = titleEls.first.text.trim();
+      }
+
+      // Extract text from <body>
+      final bodyEls = doc.findAllElements('body');
+      if (bodyEls.isNotEmpty) {
+        content = _extractText(bodyEls.first).trim();
+      }
+    } catch (_) {
+      // HTML not valid XML — fall back to regex stripping
+      final titleMatch = RegExp(
+        r'<title[^>]*>(.*?)</title>',
+        caseSensitive: false,
+        dotAll: true,
+      ).firstMatch(html);
+      if (titleMatch != null) {
+        title = titleMatch.group(1)!.trim();
+      }
+      content = html
+          .replaceAll(RegExp(r'<[^>]+>'), '\n')
+          .replaceAll(RegExp(r'&nbsp;'), ' ')
+          .replaceAll(RegExp(r'&amp;'), '&')
+          .replaceAll(RegExp(r'&lt;'), '<')
+          .replaceAll(RegExp(r'&gt;'), '>')
+          .replaceAll(RegExp(r'&quot;'), '"')
+          .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+          .trim();
+    }
+
+    if (title.isEmpty) title = '未命名章节';
+    return EpubChapter(title: title, content: content);
+  }
+
+  String _extractText(XmlNode node) {
+    final buffer = StringBuffer();
+    for (final child in node.children) {
+      if (child is XmlText) {
+        buffer.write(child.text);
+      } else if (child is XmlElement) {
+        final tag = child.name.local.toLowerCase();
+        buffer.write(_extractText(child));
+        if ([
+          'p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+          'li', 'tr', 'blockquote', 'section',
+        ].contains(tag)) {
+          buffer.write('\n');
+        }
+      }
+    }
+    return buffer.toString();
+  }
+
   String? _text(XmlDocument doc, List<String> names) {
     for (final n in names) {
-      final el = doc.findElements(n);
+      final el = doc.findAllElements(n);
       if (el.isNotEmpty) return el.first.text;
     }
     return null;
   }
 
   String? _findHrefForId(XmlDocument doc, String id) {
-    final manifest = doc.findElements('manifest');
+    final manifest = doc.findAllElements('manifest');
     if (manifest.isEmpty) return null;
     for (final item in manifest.first.children.whereType<XmlElement>()) {
       if (item.getAttribute('id') == id) return item.getAttribute('href');

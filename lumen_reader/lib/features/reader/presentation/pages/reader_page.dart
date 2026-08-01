@@ -10,6 +10,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/book_entity.dart';
 import '../../domain/entities/reading_entities.dart';
 import '../../infrastructure/book_repository.dart';
+import '../../infrastructure/epub_parser.dart';
+import '../../infrastructure/pdf_parser.dart';
 import '../../infrastructure/progress_repository.dart';
 
 final readerSettingsProvider = FutureProvider<SettingsPayload>((ref) {
@@ -38,12 +40,14 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   late final PageController _pageCtrl;
   final FlutterTts _tts = FlutterTts();
 
-  List<String> _chapters = const [];
+  List<String> _chapters = const []; // chapter titles
+  List<String> _chapterContents = const []; // chapter text content
   final List<double> _chapterOffsets = [];
   int _currentChapter = 0;
   double _currentProgress = 0;
   final bool _showControls = true;
   bool _isPlayingTts = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -68,39 +72,57 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   Future<void> _loadBook() async {
-    final bookAsync = ref.read(readerBookProvider(widget.bookId));
-    final book = bookAsync.valueOrNull;
-    if (book == null) return;
+    final book = await ref.read(readerBookProvider(widget.bookId).future);
+    if (book == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
 
     final progressRepo = ref.read(progressRepositoryProvider);
     final saved = await progressRepo.fetchProgress(book.id);
 
-    if (book.format == 'epub') {
-      await _loadEpubChapters(book);
-    } else {
-      _chapters = [await _extractPlainText(book.filePath)];
+    try {
+      if (book.format == 'epub') {
+        await _loadEpubChapters(book);
+      } else if (book.format == 'pdf') {
+        final text = await PdfParser().extractText(book.filePath);
+        _chapters = ['全文'];
+        _chapterContents = [text];
+      } else {
+        // txt and other plain-text formats
+        _chapters = ['全文'];
+        _chapterContents = [await _extractPlainText(book.filePath)];
+      }
       _chapterOffsets.add(0);
+    } catch (_) {
+      _chapters = ['错误'];
+      _chapterContents = ['无法加载文件内容'];
     }
 
     if (saved != null) {
       _currentChapter = _chapters.indexWhere((c) => c == saved.chapterId);
       if (_currentChapter == -1) _currentChapter = 0;
       _currentProgress = saved.progress;
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.jumpTo(saved.scrollOffset.toDouble());
-      }
     }
 
     final repo = ref.read(bookRepositoryProvider);
     await repo.recordRead(book.id);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (saved != null && _scrollCtrl.hasClients) {
+        _scrollCtrl.jumpTo(saved.scrollOffset.toDouble());
+      }
+    }
   }
 
   Future<void> _loadEpubChapters(BookEntity book) async {
-    // Placeholder — real implementation parses the epub spine.
-    // We show a "demo" chapter for this scaffold.
-    _chapters = ['第一章', '第二章', '第三章'];
-    for (int i = 0; i < _chapters.length; i++) {
-      _chapterOffsets.add(i * 5000.0);
+    final chapters = await EpubParser().extractChapters(book.filePath);
+    _chapters = chapters.map((c) => c.title).toList();
+    _chapterContents = chapters.map((c) => c.content).toList();
+    if (_chapters.isEmpty) {
+      _chapters = ['未命名章节'];
+      _chapterContents = ['无法解析 EPUB 内容'];
     }
   }
 
@@ -160,6 +182,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       body: bookAsync.when(
         data: (book) {
           if (book == null) return const Center(child: Text('书籍未找到'));
+          if (_isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
           return Stack(
             children: [
               _buildReaderSurface(book, settingsAsync.valueOrNull),
@@ -249,7 +274,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               _showHighlightMenu(book, chapterIndex, details.globalPosition);
             },
             child: Text(
-              _demoText(chapterIndex),
+              chapterIndex < _chapterContents.length
+                  ? _chapterContents[chapterIndex]
+                  : '无内容',
               style: TextStyle(
                 fontSize: s?.fontSize ?? 17,
                 height: s?.lineHeight ?? 1.6,
@@ -262,12 +289,6 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         ],
       ),
     );
-  }
-
-  String _demoText(int i) {
-    const sample =
-        '这是一段示例文本，用于演示流畅的阅读体验。在真实实现中，这段内容会来自 EPUB 的某个章节，保持完整的排版与语义结构。\n\n';
-    return sample * (3 + i);
   }
 
   Color _resolveTextColor(SettingsPayload? s, ThemeData theme) {
@@ -550,7 +571,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       await _tts.stop();
       setState(() => _isPlayingTts = false);
     } else {
-      final text = _demoText(_currentChapter);
+      final text = _currentChapter < _chapterContents.length
+          ? _chapterContents[_currentChapter]
+          : '';
+      if (text.isEmpty) return;
       await _tts.speak(
         text.substring(0, text.length > 600 ? 600 : text.length),
       );
