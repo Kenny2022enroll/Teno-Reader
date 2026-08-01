@@ -140,18 +140,12 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       }
 
       // Strip UTF-16 LE BOM
-      if (bytes.length >= 2 &&
-          bytes[0] == 0xFF &&
-          bytes[1] == 0xFE) {
-        return String.fromCharCodes(
-          bytes.buffer.asUint16List(2),
-        );
+      if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
+        return String.fromCharCodes(bytes.buffer.asUint16List(2));
       }
 
       // Strip UTF-16 BE BOM
-      if (bytes.length >= 2 &&
-          bytes[0] == 0xFE &&
-          bytes[1] == 0xFF) {
+      if (bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
         final u16 = bytes.buffer.asUint16List(2);
         final swapped = Uint16List(u16.length);
         for (int i = 0; i < u16.length; i++) {
@@ -165,8 +159,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         return utf8.decode(bytes);
       } catch (_) {
         // Not valid UTF-8 — likely GBK/GB18030 for Chinese txt files.
-        // Fallback: decode as Latin-1 so content is at least visible
-        // (not perfect, but avoids blank page).
+        // Fallback: decode with allowMalformed so content is at least
+        // visible (not perfect, but avoids blank page).
         return utf8.decode(bytes, allowMalformed: true);
       }
     } catch (_) {
