@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:xml/xml.dart';
 
 import '../domain/repositories/book_repository.dart';
@@ -16,7 +17,7 @@ class EpubChapter {
 /// Lightweight EPUB metadata / content extractor.
 class EpubParser {
   /// Decode archive file content as UTF-8, stripping BOM if present.
-  String _decodeContent(dynamic content) {
+  static String _decodeContent(dynamic content) {
     final bytes = content is Uint8List
         ? content
         : Uint8List.fromList(content as List<int>);
@@ -32,7 +33,11 @@ class EpubParser {
   }
 
   Future<BookInfo> extract(String path) async {
-    final archive = _openArchive(path);
+    return compute(_extractInIsolate, path);
+  }
+
+  static BookInfo _extractInIsolate(String path) {
+    final archive = _openArchiveSync(path);
     final opfPath = _findOpfPath(archive);
     if (opfPath == null) {
       return const BookInfo(title: 'Unknown', format: 'epub');
@@ -82,7 +87,11 @@ class EpubParser {
 
   /// Extract all chapters from an EPUB file in spine order.
   Future<List<EpubChapter>> extractChapters(String path) async {
-    final archive = _openArchive(path);
+    return compute(_extractChaptersInIsolate, path);
+  }
+
+  static List<EpubChapter> _extractChaptersInIsolate(String path) {
+    final archive = _openArchiveSync(path);
     final opfPath = _findOpfPath(archive);
     if (opfPath == null) return [];
 
@@ -128,12 +137,12 @@ class EpubParser {
     return chapters;
   }
 
-  Archive _openArchive(String path) {
+  static Archive _openArchiveSync(String path) {
     final bytes = File(path).readAsBytesSync();
     return ZipDecoder().decodeBytes(bytes);
   }
 
-  String? _findOpfPath(Archive archive) {
+  static String? _findOpfPath(Archive archive) {
     final container = archive.findFile('META-INF/container.xml');
     if (container != null) {
       final xml = XmlDocument.parse(_decodeContent(container.content));
@@ -145,7 +154,7 @@ class EpubParser {
     return 'OEBPS/content.opf';
   }
 
-  EpubChapter _parseHtmlChapter(String html) {
+  static EpubChapter _parseHtmlChapter(String html) {
     String title = '';
     String content = '';
 
@@ -204,7 +213,7 @@ class EpubParser {
     'section',
   };
 
-  String _extractText(XmlNode node) {
+  static String _extractText(XmlNode node) {
     final buffer = StringBuffer();
     for (final child in node.children) {
       if (child is XmlText) {
@@ -220,7 +229,7 @@ class EpubParser {
     return buffer.toString();
   }
 
-  String? _text(XmlDocument doc, List<String> names) {
+  static String? _text(XmlDocument doc, List<String> names) {
     for (final n in names) {
       final el = doc.findAllElements(n);
       if (el.isNotEmpty) return el.first.text;
@@ -228,7 +237,7 @@ class EpubParser {
     return null;
   }
 
-  String? _findHrefForId(XmlDocument doc, String id) {
+  static String? _findHrefForId(XmlDocument doc, String id) {
     final manifest = doc.findAllElements('manifest');
     if (manifest.isEmpty) return null;
     for (final item in manifest.first.children.whereType<XmlElement>()) {

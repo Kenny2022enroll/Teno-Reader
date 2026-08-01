@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
@@ -26,17 +27,20 @@ class PdfParser {
   /// Extract all text from a PDF file, joining pages with newlines.
   Future<String> extractText(String path) async {
     try {
-      final bytes = File(path).readAsBytesSync();
-      final document = PdfDocument(inputBytes: bytes);
-      final extractor = PdfTextExtractor(document);
-
-      final text = extractor.extractText();
-      document.dispose();
-      return text;
+      return await compute(_extractTextSync, path);
     } catch (e) {
       _logger.e('PDF text extraction failed: $e');
       return '';
     }
+  }
+
+  static String _extractTextSync(String path) {
+    final bytes = File(path).readAsBytesSync();
+    final document = PdfDocument(inputBytes: bytes);
+    final extractor = PdfTextExtractor(document);
+    final text = extractor.extractText();
+    document.dispose();
+    return text;
   }
 
   String _filename(String p) {

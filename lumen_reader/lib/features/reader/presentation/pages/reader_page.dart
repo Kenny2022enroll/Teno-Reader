@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -28,6 +29,44 @@ final readerBookProvider = FutureProvider.family<BookEntity?, String>((
   final repo = ref.watch(bookRepositoryProvider);
   return repo.fetchBook(id);
 });
+
+/// Decode a TXT file in a background isolate, handling BOM and encoding.
+String _decodeTxtFile(String path) {
+  final bytes = File(path).readAsBytesSync();
+
+  // Strip UTF-8 BOM
+  if (bytes.length >= 3 &&
+      bytes[0] == 0xEF &&
+      bytes[1] == 0xBB &&
+      bytes[2] == 0xBF) {
+    return utf8.decode(bytes.sublist(3), allowMalformed: true);
+  }
+
+  // Strip UTF-16 LE BOM
+  if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
+    return String.fromCharCodes(bytes.buffer.asUint16List(2));
+  }
+
+  // Strip UTF-16 BE BOM
+  if (bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
+    final u16 = bytes.buffer.asUint16List(2);
+    final swapped = Uint16List(u16.length);
+    for (int i = 0; i < u16.length; i++) {
+      swapped[i] = (u16[i] << 8) | (u16[i] >> 8);
+    }
+    return String.fromCharCodes(swapped);
+  }
+
+  // Try UTF-8 first
+  try {
+    return utf8.decode(bytes);
+  } catch (_) {
+    // Not valid UTF-8 — likely GBK/GB18030 for Chinese txt files.
+    // Fallback: decode with allowMalformed so content is at least
+    // visible (not perfect, but avoids blank page).
+    return utf8.decode(bytes, allowMalformed: true);
+  }
+}
 
 class ReaderPage extends ConsumerStatefulWidget {
   const ReaderPage({super.key, required this.bookId});
@@ -130,40 +169,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Future<String> _extractPlainText(String path) async {
     try {
-      final bytes = await File(path).readAsBytes();
-
-      // Strip UTF-8 BOM
-      if (bytes.length >= 3 &&
-          bytes[0] == 0xEF &&
-          bytes[1] == 0xBB &&
-          bytes[2] == 0xBF) {
-        return utf8.decode(bytes.sublist(3), allowMalformed: true);
-      }
-
-      // Strip UTF-16 LE BOM
-      if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
-        return String.fromCharCodes(bytes.buffer.asUint16List(2));
-      }
-
-      // Strip UTF-16 BE BOM
-      if (bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
-        final u16 = bytes.buffer.asUint16List(2);
-        final swapped = Uint16List(u16.length);
-        for (int i = 0; i < u16.length; i++) {
-          swapped[i] = (u16[i] << 8) | (u16[i] >> 8);
-        }
-        return String.fromCharCodes(swapped);
-      }
-
-      // Try UTF-8 first
-      try {
-        return utf8.decode(bytes);
-      } catch (_) {
-        // Not valid UTF-8 — likely GBK/GB18030 for Chinese txt files.
-        // Fallback: decode with allowMalformed so content is at least
-        // visible (not perfect, but avoids blank page).
-        return utf8.decode(bytes, allowMalformed: true);
-      }
+      return await compute(_decodeTxtFile, path);
     } catch (_) {
       return '';
     }
@@ -260,7 +266,15 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         controller: _pageCtrl,
         itemCount: _chapters.length,
         onPageChanged: (i) => setState(() => _currentChapter = i),
-        itemBuilder: (context, index) => _buildChapter(book, index, settings),
+        itemBuilder: (context, index) {
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: MediaQuery.of(context).padding.top + AppSpacing.md,
+            ),
+            child: _buildChapterBody(book, index, settings),
+          );
+        },
       );
     }
     return SingleChildScrollView(
@@ -269,7 +283,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         horizontal: AppSpacing.xl,
         vertical: MediaQuery.of(context).padding.top + AppSpacing.md,
       ),
-      child: _buildChapterBody(book, _currentChapter, settings),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildChapterBody(book, _currentChapter, settings),
+          _buildChapterNav(book, settings),
+        ],
+      ),
     );
   }
 
@@ -321,6 +341,54 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             ),
           ),
           const SizedBox(height: AppSpacing.xxxl),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChapterNav(BookEntity book, SettingsPayload? s) {
+    final textColor = _resolveTextColor(s, Theme.of(context));
+    final hasPrev = _currentChapter > 0;
+    final hasNext = _currentChapter < _chapters.length - 1;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextButton.icon(
+              onPressed: hasPrev
+                  ? () {
+                      setState(() {
+                        _currentChapter--;
+                        _currentProgress = 0;
+                      });
+                      _scrollCtrl.jumpTo(0);
+                      _autoSaveProgress();
+                    }
+                  : null,
+              icon: const Icon(Icons.arrow_back_ios_rounded),
+              label: const Text('上一章'),
+              style: TextButton.styleFrom(foregroundColor: textColor),
+            ),
+          ),
+          Expanded(
+            child: TextButton.icon(
+              onPressed: hasNext
+                  ? () {
+                      setState(() {
+                        _currentChapter++;
+                        _currentProgress = 0;
+                      });
+                      _scrollCtrl.jumpTo(0);
+                      _autoSaveProgress();
+                    }
+                  : null,
+              icon: const Icon(Icons.arrow_forward_ios_rounded),
+              label: const Text('下一章'),
+              style: TextButton.styleFrom(foregroundColor: textColor),
+            ),
+          ),
         ],
       ),
     );
