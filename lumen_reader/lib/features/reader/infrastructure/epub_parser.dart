@@ -20,15 +20,17 @@ class EpubParser {
     final bytes = content is Uint8List
         ? content
         : Uint8List.fromList(content as List<int>);
+    var start = 0;
     // Strip UTF-8 BOM (EF BB BF) if present
     if (bytes.length >= 3 &&
         bytes[0] == 0xEF &&
         bytes[1] == 0xBB &&
         bytes[2] == 0xBF) {
-      return utf8.decode(bytes.sublist(3), allowMalformed: true);
+      start = 3;
     }
-    return utf8.decode(bytes, allowMalformed: true);
+    return utf8.decode(bytes.sublist(start), allowMalformed: true);
   }
+
   Future<BookInfo> extract(String path) async {
     final archive = _openArchive(path);
     final opfPath = _findOpfPath(archive);
@@ -63,9 +65,7 @@ class EpubParser {
       final file = archive.findFile('$dir$coverHref');
       if (file != null) {
         final ts = DateTime.now().millisecondsSinceEpoch;
-        final tmp = File(
-          '${Directory.systemTemp.path}/lumen_cover_$ts.jpg',
-        );
+        final tmp = File('${Directory.systemTemp.path}/lumen_cover_$ts.jpg');
         tmp.writeAsBytesSync(file.content as Uint8List);
         coverPath = tmp.path;
       }
