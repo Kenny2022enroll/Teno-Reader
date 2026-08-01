@@ -29,8 +29,7 @@ class EpubParser {
     final opfDoc = XmlDocument.parse(String.fromCharCodes(opf.content));
     final title = _text(opfDoc, ['dc:title', 'title']) ?? 'Unknown';
     final author = _text(opfDoc, ['dc:creator', 'creator']);
-    final description =
-        _text(opfDoc, ['dc:description', 'description']);
+    final description = _text(opfDoc, ['dc:description', 'description']);
 
     String? coverHref;
     final meta = opfDoc.findElements('meta');
@@ -174,6 +173,22 @@ class EpubParser {
     return EpubChapter(title: title, content: content);
   }
 
+  static const _blockTags = <String>{
+    'p',
+    'div',
+    'br',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'li',
+    'tr',
+    'blockquote',
+    'section',
+  };
+
   String _extractText(XmlNode node) {
     final buffer = StringBuffer();
     for (final child in node.children) {
@@ -182,21 +197,7 @@ class EpubParser {
       } else if (child is XmlElement) {
         final tag = child.name.local.toLowerCase();
         buffer.write(_extractText(child));
-        if (const {
-          'p',
-          'div',
-          'br',
-          'h1',
-          'h2',
-          'h3',
-          'h4',
-          'h5',
-          'h6',
-          'li',
-          'tr',
-          'blockquote',
-          'section',
-        }.contains(tag)) {
+        if (_blockTags.contains(tag)) {
           buffer.write('\n');
         }
       }
