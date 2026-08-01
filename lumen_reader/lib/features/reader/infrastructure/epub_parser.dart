@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
@@ -14,6 +15,20 @@ class EpubChapter {
 
 /// Lightweight EPUB metadata / content extractor.
 class EpubParser {
+  /// Decode archive file content as UTF-8, stripping BOM if present.
+  String _decodeContent(dynamic content) {
+    final bytes = content is Uint8List
+        ? content
+        : Uint8List.fromList(content as List<int>);
+    // Strip UTF-8 BOM (EF BB BF) if present
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xEF &&
+        bytes[1] == 0xBB &&
+        bytes[2] == 0xBF) {
+      return utf8.decode(bytes.sublist(3), allowMalformed: true);
+    }
+    return utf8.decode(bytes, allowMalformed: true);
+  }
   Future<BookInfo> extract(String path) async {
     final archive = _openArchive(path);
     final opfPath = _findOpfPath(archive);
@@ -26,7 +41,7 @@ class EpubParser {
       return const BookInfo(title: 'Unknown', format: 'epub');
     }
 
-    final opfDoc = XmlDocument.parse(String.fromCharCodes(opf.content));
+    final opfDoc = XmlDocument.parse(_decodeContent(opf.content));
     final title = _text(opfDoc, ['dc:title', 'title']) ?? 'Unknown';
     final author = _text(opfDoc, ['dc:creator', 'creator']);
     final description = _text(opfDoc, ['dc:description', 'description']);
@@ -74,7 +89,7 @@ class EpubParser {
     final opf = archive.findFile(opfPath);
     if (opf == null) return [];
 
-    final opfDoc = XmlDocument.parse(String.fromCharCodes(opf.content));
+    final opfDoc = XmlDocument.parse(_decodeContent(opf.content));
     final opfDir = opfPath.contains('/')
         ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
         : '';
@@ -106,7 +121,7 @@ class EpubParser {
       final file = archive.findFile(filePath);
       if (file == null) continue;
 
-      final html = String.fromCharCodes(file.content);
+      final html = _decodeContent(file.content);
       chapters.add(_parseHtmlChapter(html));
     }
 
@@ -121,7 +136,7 @@ class EpubParser {
   String? _findOpfPath(Archive archive) {
     final container = archive.findFile('META-INF/container.xml');
     if (container != null) {
-      final xml = XmlDocument.parse(String.fromCharCodes(container.content));
+      final xml = XmlDocument.parse(_decodeContent(container.content));
       final rootfiles = xml.findAllElements('rootfile');
       if (rootfiles.isNotEmpty) {
         return rootfiles.first.getAttribute('full-path');

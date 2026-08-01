@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
@@ -331,8 +333,8 @@ class _CoverImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (book.coverPath != null) {
-      return Image.network(
-        book.coverPath!,
+      return Image.file(
+        File(book.coverPath!),
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) {
           return _FallbackCover(book: book);
