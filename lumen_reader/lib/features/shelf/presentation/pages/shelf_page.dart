@@ -302,17 +302,15 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
           added++;
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('导入失败: ${f.name} — $e')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text('导入失败: ${f.name} — $e')));
           }
         }
       }
     }
     if (added > 0 && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('成功导入 $added 本书')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('成功导入 $added 本书')));
     }
     ref.invalidate(shelfBooksProvider);
   }

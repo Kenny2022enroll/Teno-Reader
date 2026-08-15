@@ -824,9 +824,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     );
                     if (mounted) {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('已添加 $c 高亮')));
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(SnackBar(content: Text('已添加 $c 高亮')));
                     }
                   },
                 );
