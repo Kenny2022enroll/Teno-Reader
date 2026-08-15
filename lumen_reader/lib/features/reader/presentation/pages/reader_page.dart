@@ -87,7 +87,7 @@ String _decodeTxtFile(String path) {
         i++;
       } else if (b >= 0x81 && b <= 0xFE && i + 1 < bytes.length) {
         // Likely a GBK/GB18030 two-byte sequence
-        final b2 = bytes[i + 1];
+        bytes[i + 1]; // touch second byte (boundary check via index)
         // Try to interpret as a raw character; will be garbage but
         // avoids throwing. Real GBK decoding needs a dedicated codec.
         buffer.writeCharCode(0xFFFD); // replacement char �
