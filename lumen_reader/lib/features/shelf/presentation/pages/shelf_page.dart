@@ -137,9 +137,7 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
             ),
             child: Icon(
               Icons.menu_book_rounded,
-              color: isDark
-                  ? const Color(0xFFE0C097)
-                  : const Color(0xFFF5E6CC),
+              color: isDark ? const Color(0xFFE0C097) : const Color(0xFFF5E6CC),
               size: 22,
             ),
           ),
@@ -203,10 +201,12 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
     final bgColor = isDark
         ? const Color(0xFF2C2018).withOpacity(0.75)
         : const Color(0xFF8B6239).withOpacity(0.35);
-    final hintColor =
-        isDark ? const Color(0xFFA08568) : const Color(0xFF5C3E22);
-    final textColor =
-        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3F2A18);
+    final hintColor = isDark
+        ? const Color(0xFFA08568)
+        : const Color(0xFF5C3E22);
+    final textColor = isDark
+        ? const Color(0xFFEFE0C7)
+        : const Color(0xFF3F2A18);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -302,17 +302,17 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
           added++;
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('导入失败: ${f.name} — $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('导入失败: ${f.name} — $e')));
           }
         }
       }
     }
     if (added > 0 && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('成功导入 $added 本书')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('成功导入 $added 本书')));
     }
     ref.invalidate(shelfBooksProvider);
   }
@@ -503,9 +503,7 @@ class _WoodGrainPainter extends CustomPainter {
 
     for (int i = 0; i < 6; i++) {
       final y = 4 + rng.nextDouble() * (size.height - 8);
-      final color = (isDark
-              ? const Color(0xFF1A120B)
-              : const Color(0xFF5C3E22))
+      final color = (isDark ? const Color(0xFF1A120B) : const Color(0xFF5C3E22))
           .withOpacity(0.2 + rng.nextDouble() * 0.25);
       paint.color = color;
       final path = Path()..moveTo(0, y);
@@ -827,7 +825,7 @@ class _BookSpine extends StatelessWidget {
     // Pick a "bookbinding cloth" color based on title hash
     final colorSeed =
         book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
-            book.author.codeUnits.fold<int>(0, (a, b) => a + b);
+        book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final palette = <Color>[
       const Color(0xFF3A1F11),
       const Color(0xFF1F3044),
@@ -852,16 +850,11 @@ class _BookSpine extends StatelessWidget {
           ],
           stops: const [0.0, 0.4, 0.75, 1.0],
         ),
-        borderRadius: const BorderRadius.horizontal(
-          left: Radius.circular(4),
-        ),
+        borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
       ),
       // Add subtle grain lines on the spine
       child: CustomPaint(
-        painter: _SpineGrainPainter(
-          spineColor: spineDark,
-          seed: colorSeed,
-        ),
+        painter: _SpineGrainPainter(spineColor: spineDark, seed: colorSeed),
       ),
     );
   }
@@ -885,7 +878,11 @@ class _SpineGrainPainter extends CustomPainter {
       paint.color = Colors.black.withOpacity(0.55);
       canvas.drawLine(Offset(x, 2), Offset(x, size.height - 2), paint);
       paint.color = Colors.white.withOpacity(0.06);
-      canvas.drawLine(Offset(x + 0.5, 2), Offset(x + 0.5, size.height - 2), paint);
+      canvas.drawLine(
+        Offset(x + 0.5, 2),
+        Offset(x + 0.5, size.height - 2),
+        paint,
+      );
     }
 
     // Random tiny speckles
@@ -893,10 +890,11 @@ class _SpineGrainPainter extends CustomPainter {
     for (int i = 0; i < 12; i++) {
       final x = rng.nextDouble() * size.width;
       final y = rng.nextDouble() * size.height;
-      speck.color = (rng.nextBool()
-              ? Colors.black
-              : Color.lerp(spineColor, Colors.white, 0.3)!)
-          .withOpacity(rng.nextDouble() * 0.4);
+      speck.color =
+          (rng.nextBool()
+                  ? Colors.black
+                  : Color.lerp(spineColor, Colors.white, 0.3)!)
+              .withOpacity(rng.nextDouble() * 0.4);
       canvas.drawCircle(Offset(x, y), 0.5, speck);
     }
   }
@@ -934,9 +932,7 @@ class _BookPageEdge extends StatelessWidget {
           right: Radius.circular(AppRadius.sm),
         ),
       ),
-      child: CustomPaint(
-        painter: _PageLinePainter(),
-      ),
+      child: CustomPaint(painter: _PageLinePainter()),
     );
   }
 }
@@ -956,11 +952,7 @@ class _PageLinePainter extends CustomPainter {
         const Color(0xFFC9B894).withOpacity(0.7),
         (y / size.height).clamp(0.0, 1.0),
       )!;
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width - 0.2, y),
-        paint,
-      );
+      canvas.drawLine(Offset(0, y), Offset(size.width - 0.2, y), paint);
     }
   }
 
@@ -1056,7 +1048,8 @@ class _FallbackCover extends StatelessWidget {
       const Color(0xFF01579B),
       const Color(0xFF880E4F),
     ];
-    final seed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+    final seed =
+        book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final i = seed % colors.length;
     final base = colors[i];
@@ -1085,10 +1078,7 @@ class _FallbackCover extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withOpacity(0.18),
-                    Colors.transparent,
-                  ],
+                  colors: [Colors.white.withOpacity(0.18), Colors.transparent],
                 ),
               ),
             ),
@@ -1150,10 +1140,10 @@ class _EmptyShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3A2614);
-    final subColor =
-        isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
+    final textColor = isDark
+        ? const Color(0xFFEFE0C7)
+        : const Color(0xFF3A2614);
+    final subColor = isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
 
     return Center(
       child: Padding(
@@ -1215,9 +1205,7 @@ class _EmptyShelf extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                isSearch
-                    ? '尝试使用其他关键字'
-                    : '导入 EPUB / PDF / TXT 文件开启阅读之旅',
+                isSearch ? '尝试使用其他关键字' : '导入 EPUB / PDF / TXT 文件开启阅读之旅',
                 style: TextStyle(color: subColor, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
@@ -1226,8 +1214,9 @@ class _EmptyShelf extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onImport,
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                        isDark ? const Color(0xFFB8860B) : const Color(0xFF8B4513),
+                    backgroundColor: isDark
+                        ? const Color(0xFFB8860B)
+                        : const Color(0xFF8B4513),
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.xl,
                       vertical: AppSpacing.md,

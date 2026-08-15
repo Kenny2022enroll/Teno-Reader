@@ -54,8 +54,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     subtitle: s.pageTurnStyle == 'slide'
                         ? '滑动'
                         : s.pageTurnStyle == 'curl'
-                            ? '翻页'
-                            : '无',
+                        ? '翻页'
+                        : '无',
                     trailing: DropdownButton<String>(
                       value: s.pageTurnStyle,
                       items: const [

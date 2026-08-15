@@ -16,13 +16,14 @@ import '../storage/storage_service.dart';
 ///   once per 5 minutes and paused while offline.
 class SyncService {
   SyncService(this._storage, this._logger, {Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 8),
-                receiveTimeout: const Duration(seconds: 8),
-              ),
-            );
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 8),
+              receiveTimeout: const Duration(seconds: 8),
+            ),
+          );
 
   final StorageService _storage;
   final Logger _logger;
@@ -105,8 +106,8 @@ class SyncService {
     if (_masterKey == null) return payload;
     final iv = IV.fromSecureRandom(16);
     final encrypter = Encrypter(AES(_masterKey!, mode: AESMode.cbc));
-    final jsonStr =
-        payload.toString(); // placeholder; real impl uses jsonEncode
+    final jsonStr = payload
+        .toString(); // placeholder; real impl uses jsonEncode
     final encrypted = encrypter.encrypt(jsonStr, iv: iv);
     return {
       'v': 1,
@@ -137,14 +138,7 @@ class SyncResult {
   final String? error;
   final Map<String, dynamic>? remote;
 
-  const SyncResult.success(this.remote)
-      : ok = true,
-        error = null;
-  const SyncResult.failed(this.error)
-      : ok = false,
-        remote = null;
-  const SyncResult.skipped()
-      : ok = true,
-        error = null,
-        remote = null;
+  const SyncResult.success(this.remote) : ok = true, error = null;
+  const SyncResult.failed(this.error) : ok = false, remote = null;
+  const SyncResult.skipped() : ok = true, error = null, remote = null;
 }
