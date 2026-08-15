@@ -96,9 +96,8 @@ class EpubParser {
           try {
             final ext = c.toLowerCase().split('.').last;
             final ts = DateTime.now().millisecondsSinceEpoch;
-            final tmpExt = (ext == 'png' || ext == 'jpeg' || ext == 'webp')
-                ? ext
-                : 'jpg';
+            final tmpExt =
+                (ext == 'png' || ext == 'jpeg' || ext == 'webp') ? ext : 'jpg';
             final tmp = File(
               '${Directory.systemTemp.path}/lumen_cover_$ts.$tmpExt',
             );
@@ -384,8 +383,7 @@ class EpubParser {
       if (id == 'cover' ||
           id == 'cover-image' ||
           id == 'coverimage' ||
-          id.contains('cover'))
-        byId ??= href;
+          id.contains('cover')) byId ??= href;
 
       // Pick the first image manifest item as last resort
       if (byMediaType == null &&

@@ -183,9 +183,8 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               ),
               child: Icon(
                 Icons.settings_outlined,
-                color: isDark
-                    ? const Color(0xFFE0C097)
-                    : const Color(0xFFF5E6CC),
+                color:
+                    isDark ? const Color(0xFFE0C097) : const Color(0xFFF5E6CC),
                 size: 20,
               ),
             ),
@@ -201,12 +200,10 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
     final bgColor = isDark
         ? const Color(0xFF2C2018).withOpacity(0.75)
         : const Color(0xFF8B6239).withOpacity(0.35);
-    final hintColor = isDark
-        ? const Color(0xFFA08568)
-        : const Color(0xFF5C3E22);
-    final textColor = isDark
-        ? const Color(0xFFEFE0C7)
-        : const Color(0xFF3F2A18);
+    final hintColor =
+        isDark ? const Color(0xFFA08568) : const Color(0xFF5C3E22);
+    final textColor =
+        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3F2A18);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -821,8 +818,7 @@ class _BookSpine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Pick a "bookbinding cloth" color based on title hash
-    final colorSeed =
-        book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+    final colorSeed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final palette = <Color>[
       const Color(0xFF3A1F11),
@@ -888,11 +884,10 @@ class _SpineGrainPainter extends CustomPainter {
     for (int i = 0; i < 12; i++) {
       final x = rng.nextDouble() * size.width;
       final y = rng.nextDouble() * size.height;
-      speck.color =
-          (rng.nextBool()
-                  ? Colors.black
-                  : Color.lerp(spineColor, Colors.white, 0.3)!)
-              .withOpacity(rng.nextDouble() * 0.4);
+      speck.color = (rng.nextBool()
+              ? Colors.black
+              : Color.lerp(spineColor, Colors.white, 0.3)!)
+          .withOpacity(rng.nextDouble() * 0.4);
       canvas.drawCircle(Offset(x, y), 0.5, speck);
     }
   }
@@ -1046,8 +1041,7 @@ class _FallbackCover extends StatelessWidget {
       const Color(0xFF01579B),
       const Color(0xFF880E4F),
     ];
-    final seed =
-        book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+    final seed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final i = seed % colors.length;
     final base = colors[i];
@@ -1138,9 +1132,8 @@ class _EmptyShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = isDark
-        ? const Color(0xFFEFE0C7)
-        : const Color(0xFF3A2614);
+    final textColor =
+        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3A2614);
     final subColor = isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
 
     return Center(
