@@ -28,6 +28,19 @@ class EpubParser {
         bytes[2] == 0xBF) {
       start = 3;
     }
+    // Strip UTF-16 LE BOM
+    if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
+      return String.fromCharCodes(bytes.buffer.asUint16List(2));
+    }
+    // Strip UTF-16 BE BOM
+    if (bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
+      final u16 = bytes.buffer.asUint16List(2);
+      final swapped = Uint16List(u16.length);
+      for (int i = 0; i < u16.length; i++) {
+        swapped[i] = (u16[i] << 8) | (u16[i] >> 8);
+      }
+      return String.fromCharCodes(swapped);
+    }
     return utf8.decode(bytes.sublist(start), allowMalformed: true);
   }
 
@@ -53,25 +66,80 @@ class EpubParser {
     final description = _text(opfDoc, ['dc:description', 'description']);
 
     String? coverHref;
-    final meta = opfDoc.findElements('meta');
+    // 1. Try meta[name="cover"] -> content references manifest id
+    final meta = opfDoc.findAllElements('meta');
     for (final m in meta) {
-      if (m.getAttribute('name') == 'cover') {
+      if (m.getAttribute('name')?.toLowerCase() == 'cover') {
         final id = m.getAttribute('content');
         if (id != null) {
           coverHref = _findHrefForId(opfDoc, id);
+          if (coverHref != null) break;
         }
       }
+    }
+    // 2. Fallback: search manifest for items with cover-like properties/ids
+    if (coverHref == null) {
+      coverHref = _findCoverHrefInManifest(opfDoc);
     }
 
     String? coverPath;
     if (coverHref != null) {
-      final dir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
-      final file = archive.findFile('$dir$coverHref');
-      if (file != null) {
-        final ts = DateTime.now().millisecondsSinceEpoch;
-        final tmp = File('${Directory.systemTemp.path}/lumen_cover_$ts.jpg');
-        tmp.writeAsBytesSync(file.content as Uint8List);
-        coverPath = tmp.path;
+      final dir = opfPath.contains('/')
+          ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
+          : '';
+      final candidates = <String>[
+        '$dir$coverHref',
+        coverHref!,
+      ];
+      // Try path with URL decoding (some epubs encode spaces etc.)
+      for (final c in candidates) {
+        final file = archive.findFile(c) ??
+            archive.findFile(Uri.decodeFull(c));
+        if (file != null) {
+          try {
+            final ext = c.toLowerCase().split('.').last;
+            final ts = DateTime.now().millisecondsSinceEpoch;
+            final tmpExt = (ext == 'png' || ext == 'jpeg' || ext == 'webp')
+                ? ext
+                : 'jpg';
+            final tmp = File(
+              '${Directory.systemTemp.path}/lumen_cover_$ts.$tmpExt',
+            );
+            tmp.writeAsBytesSync(
+              file.content is Uint8List
+                  ? file.content as Uint8List
+                  : Uint8List.fromList(file.content as List<int>),
+            );
+            coverPath = tmp.path;
+            break;
+          } catch (_) {
+            continue;
+          }
+        }
+      }
+    }
+
+    // 3. Last resort: scan the archive for any image named "cover"
+    if (coverPath == null) {
+      for (final file in archive.files) {
+        final name = file.name.toLowerCase();
+        if ((name.contains('cover') || name.contains('封面')) &&
+            RegExp(r'\.(jpg|jpeg|png|webp)$').hasMatch(name)) {
+          try {
+            final ts = DateTime.now().millisecondsSinceEpoch;
+            final ext = name.split('.').last;
+            final tmp = File(
+              '${Directory.systemTemp.path}/lumen_cover_$ts.$ext',
+            );
+            tmp.writeAsBytesSync(
+              file.content is Uint8List
+                  ? file.content as Uint8List
+                  : Uint8List.fromList(file.content as List<int>),
+            );
+            coverPath = tmp.path;
+            break;
+          } catch (_) {}
+        }
       }
     }
 
@@ -156,44 +224,96 @@ class EpubParser {
   static EpubChapter _parseHtmlChapter(String html) {
     String title = '';
     String content = '';
+    bool usedXml = false;
 
     try {
+      // Try strict XML parsing first (for valid XHTML)
       final doc = XmlDocument.parse(html);
-
-      // Try <title> tag
       final titleEls = doc.findAllElements('title');
       if (titleEls.isNotEmpty) {
         title = titleEls.first.text.trim();
       }
-
-      // Extract text from <body>
       final bodyEls = doc.findAllElements('body');
       if (bodyEls.isNotEmpty) {
         content = _extractText(bodyEls.first).trim();
+        usedXml = true;
       }
     } catch (_) {
-      // HTML not valid XML — fall back to regex stripping
+      // XML parsing failed — try lenient HTML extraction below
+    }
+
+    // If XML parsing failed or produced empty content, use regex fallback
+    if (!usedXml || content.isEmpty) {
       final titleMatch = RegExp(
         r'<title[^>]*>(.*?)</title>',
         caseSensitive: false,
         dotAll: true,
       ).firstMatch(html);
-      if (titleMatch != null) {
+      if (titleMatch != null && title.isEmpty) {
         title = titleMatch.group(1)!.trim();
       }
-      content = html
-          .replaceAll(RegExp(r'<[^>]+>'), '\n')
-          .replaceAll(RegExp(r'&nbsp;'), ' ')
-          .replaceAll(RegExp(r'&amp;'), '&')
-          .replaceAll(RegExp(r'&lt;'), '<')
-          .replaceAll(RegExp(r'&gt;'), '>')
-          .replaceAll(RegExp(r'&quot;'), '"')
-          .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-          .trim();
+      // Extract body content first if available
+      var bodyHtml = html;
+      final bodyMatch = RegExp(
+        r'<body[^>]*>(.*?)</body>',
+        caseSensitive: false,
+        dotAll: true,
+      ).firstMatch(html);
+      if (bodyMatch != null) {
+        bodyHtml = bodyMatch.group(1)!;
+      }
+      content = _stripHtmlTags(bodyHtml);
+      if (content.isEmpty) {
+        content = _stripHtmlTags(html);
+      }
     }
 
+    if (title.isEmpty) {
+      // Try <h1> as chapter title fallback
+      final h1Match = RegExp(
+        r'<h1[^>]*>(.*?)</h1>',
+        caseSensitive: false,
+        dotAll: true,
+      ).firstMatch(html);
+      if (h1Match != null) {
+        title = _stripHtmlTags(h1Match.group(1)!).trim();
+      }
+    }
     if (title.isEmpty) title = '未命名章节';
     return EpubChapter(title: title, content: content);
+  }
+
+  static String _stripHtmlTags(String input) {
+    // Replace block elements with newlines first
+    var s = input.replaceAllMapped(
+      RegExp(
+        r'</?(p|div|br/?|h[1-6]|li|tr|blockquote|section|article|header|footer|nav|aside)[^>]*>',
+        caseSensitive: false,
+      ),
+      (_) => '\n',
+    );
+    // Strip remaining tags
+    s = s.replaceAll(RegExp(r'<[^>]+>'), '');
+    // Decode HTML entities
+    s = s
+        .replaceAllMapped(RegExp(r'&nbsp;', caseSensitive: false), (_) => ' ')
+        .replaceAllMapped(RegExp(r'&amp;', caseSensitive: false), (_) => '&')
+        .replaceAllMapped(RegExp(r'&lt;', caseSensitive: false), (_) => '<')
+        .replaceAllMapped(RegExp(r'&gt;', caseSensitive: false), (_) => '>')
+        .replaceAllMapped(RegExp(r'&quot;', caseSensitive: false), (_) => '"')
+        .replaceAllMapped(RegExp(r'&#39;', caseSensitive: false), (_) => "'")
+        .replaceAllMapped(
+          RegExp(r'&#(\d+);'),
+          (m) => String.fromCharCode(int.parse(m.group(1)!)),
+        )
+        .replaceAllMapped(
+          RegExp(r'&#x([0-9a-fA-F]+);'),
+          (m) => String.fromCharCode(int.parse(m.group(1)!, radix: 16)),
+        );
+    // Collapse whitespace
+    s = s.replaceAll(RegExp(r'[ \t]+'), ' ');
+    s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return s.trim();
   }
 
   static const _blockTags = <String>{
@@ -243,5 +363,40 @@ class EpubParser {
       if (item.getAttribute('id') == id) return item.getAttribute('href');
     }
     return null;
+  }
+
+  /// Fallback: search manifest for an item that looks like a cover.
+  static String? _findCoverHrefInManifest(XmlDocument doc) {
+    final manifest = doc.findAllElements('manifest');
+    if (manifest.isEmpty) return null;
+    String? byProp;
+    String? byId;
+    String? byMediaType;
+    for (final item in manifest.first.children.whereType<XmlElement>()) {
+      final id = item.getAttribute('id')?.toLowerCase() ?? '';
+      final href = item.getAttribute('href');
+      final mediaType = item.getAttribute('media-type')?.toLowerCase() ?? '';
+      final props = item.getAttribute('properties')?.toLowerCase() ?? '';
+
+      if (href == null) continue;
+
+      // EPUB 3: properties="cover-image"
+      if (props.contains('cover-image')) byProp ??= href;
+
+      // Common manifest id naming patterns
+      if (id == 'cover' ||
+          id == 'cover-image' ||
+          id == 'coverimage' ||
+          id.contains('cover')) byId ??= href;
+
+      // Pick the first image manifest item as last resort
+      if (byMediaType == null &&
+          (mediaType.startsWith('image/') ||
+              RegExp(r'\.(jpg|jpeg|png|webp)$', caseSensitive: false)
+                  .hasMatch(href))) {
+        byMediaType = href;
+      }
+    }
+    return byProp ?? byId ?? byMediaType;
   }
 }

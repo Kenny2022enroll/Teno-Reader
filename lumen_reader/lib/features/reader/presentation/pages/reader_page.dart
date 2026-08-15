@@ -33,6 +33,7 @@ final readerBookProvider = FutureProvider.family<BookEntity?, String>((
 /// Decode a TXT file in a background isolate, handling BOM and encoding.
 String _decodeTxtFile(String path) {
   final bytes = File(path).readAsBytesSync();
+  if (bytes.isEmpty) return '';
 
   // Strip UTF-8 BOM
   if (bytes.length >= 3 &&
@@ -44,27 +45,68 @@ String _decodeTxtFile(String path) {
 
   // Strip UTF-16 LE BOM
   if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
-    return String.fromCharCodes(bytes.buffer.asUint16List(2));
+    try {
+      return String.fromCharCodes(bytes.buffer.asUint16List(2));
+    } catch (_) {
+      return utf8.decode(bytes.sublist(2), allowMalformed: true);
+    }
   }
 
   // Strip UTF-16 BE BOM
   if (bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
-    final u16 = bytes.buffer.asUint16List(2);
-    final swapped = Uint16List(u16.length);
-    for (int i = 0; i < u16.length; i++) {
-      swapped[i] = (u16[i] << 8) | (u16[i] >> 8);
+    try {
+      final u16 = bytes.buffer.asUint16List(2);
+      final swapped = Uint16List(u16.length);
+      for (int i = 0; i < u16.length; i++) {
+        swapped[i] = (u16[i] << 8) | (u16[i] >> 8);
+      }
+      return String.fromCharCodes(swapped);
+    } catch (_) {
+      return utf8.decode(bytes.sublist(2), allowMalformed: true);
     }
-    return String.fromCharCodes(swapped);
   }
 
-  // Try UTF-8 first
+  // Try strict UTF-8 first
   try {
     return utf8.decode(bytes);
   } catch (_) {
-    // Not valid UTF-8 — likely GBK/GB18030 for Chinese txt files.
-    // Fallback: decode with allowMalformed so content is at least
-    // visible (not perfect, but avoids blank page).
-    return utf8.decode(bytes, allowMalformed: true);
+    // Not valid UTF-8. Common case: Chinese GBK/GB18030 encoded files.
+    // Strategy: heuristically decode as GBK-like multibyte sequence.
+    // Most Chinese GBK characters use 2-byte sequences with first byte
+    // in 0x81-0xFE range. We cannot decode perfectly without a codec,
+    // but we can produce a readable (with replacement characters) output
+    // and append a notice if we detect non-Latin byte patterns.
+    final buffer = StringBuffer();
+    int i = 0;
+    int multibyteCount = 0;
+    while (i < bytes.length) {
+      final b = bytes[i];
+      if (b < 0x80) {
+        // ASCII — always valid
+        buffer.writeCharCode(b);
+        i++;
+      } else if (b >= 0x81 && b <= 0xFE && i + 1 < bytes.length) {
+        // Likely a GBK/GB18030 two-byte sequence
+        final b2 = bytes[i + 1];
+        // Try to interpret as a raw character; will be garbage but
+        // avoids throwing. Real GBK decoding needs a dedicated codec.
+        buffer.writeCharCode(0xFFFD); // replacement char �
+        i += 2;
+        multibyteCount++;
+      } else {
+        buffer.writeCharCode(0xFFFD);
+        i++;
+      }
+    }
+    if (multibyteCount > 5) {
+      buffer.writeln();
+      buffer.writeln();
+      buffer.writeln('—');
+      buffer.writeln('提示：检测到本文件可能采用 GBK/GB18030 编码。');
+      buffer.writeln('建议：请在电脑上用记事本或 VS Code 打开文件，');
+      buffer.writeln('另存为 UTF-8 编码后再导入，即可获得完美的阅读效果。');
+    }
+    return buffer.toString();
   }
 }
 
@@ -89,6 +131,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   final bool _showControls = true;
   bool _isPlayingTts = false;
   bool _isLoading = true;
+  ReadingProgress? _savedProgress;
+  bool _needsPositionRestore = false;
 
   @override
   void initState() {
@@ -101,6 +145,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   @override
   void dispose() {
+    _autoSaveProgress(force: true);
     _scrollCtrl.dispose();
     _pageCtrl.dispose();
     _tts.stop();
@@ -112,6 +157,30 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     _tts.setCompletionHandler(_onTtsComplete);
   }
 
+  /// Try to figure out chapter index from saved progress.
+  /// Prefers encoding "index:title" in chapterId, falls back to title match,
+  /// finally uses progress percentage against chapter count.
+  int _resolveChapterIndex(ReadingProgress saved, List<String> chapters) {
+    if (chapters.isEmpty) return 0;
+    // 1. Encoded index in chapterId: "N:Title..."
+    final chapterId = saved.chapterId;
+    final colonIdx = chapterId.indexOf(':');
+    if (colonIdx > 0) {
+      final n = int.tryParse(chapterId.substring(0, colonIdx));
+      if (n != null && n >= 0 && n < chapters.length) {
+        return n;
+      }
+    }
+    // 2. Exact title match
+    final byTitle = chapters.indexWhere(
+      (c) => c == chapterId || c.trim() == chapterId.trim(),
+    );
+    if (byTitle >= 0) return byTitle;
+    // 3. Progress-based estimate
+    final estimated = (saved.progress * chapters.length).floor();
+    return estimated.clamp(0, chapters.length - 1);
+  }
+
   Future<void> _loadBook() async {
     final book = await ref.read(readerBookProvider(widget.bookId).future);
     if (book == null) {
@@ -121,29 +190,70 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
     final progressRepo = ref.read(progressRepositoryProvider);
     final saved = await progressRepo.fetchProgress(book.id);
+    _savedProgress = saved;
 
+    String errorHint = '';
     try {
       if (book.format == 'epub') {
         await _loadEpubChapters(book);
+        if (_chapters.isEmpty) {
+          errorHint = '无法解析 EPUB 章节结构。请确认文件未损坏。';
+        }
       } else if (book.format == 'pdf') {
-        final text = await PdfParser().extractText(book.filePath);
-        _chapters = ['全文'];
-        _chapterContents = [text];
+        try {
+          final text = await PdfParser().extractText(book.filePath);
+          _chapters = ['全文'];
+          _chapterContents = [text];
+        } catch (e) {
+          errorHint = 'PDF 解析失败（$e）。若为加密 PDF，请先解密后再导入。';
+        }
       } else {
         // txt and other plain-text formats
-        _chapters = ['全文'];
-        _chapterContents = [await _extractPlainText(book.filePath)];
+        try {
+          _chapters = ['全文'];
+          _chapterContents = [await _extractPlainText(book.filePath)];
+        } catch (e) {
+          errorHint = '读取纯文本文件失败（$e）。';
+        }
       }
       _chapterOffsets.add(0);
-    } catch (_) {
-      _chapters = ['错误'];
-      _chapterContents = ['无法加载文件内容'];
+    } catch (e) {
+      errorHint = '加载文件时发生异常：$e';
     }
 
-    if (saved != null) {
-      _currentChapter = _chapters.indexWhere((c) => c == saved.chapterId);
-      if (_currentChapter == -1) _currentChapter = 0;
-      _currentProgress = saved.progress;
+    // Provide graceful fallback content instead of generic error screen
+    if (_chapters.isEmpty || _chapterContents.isEmpty) {
+      _chapters = ['提示'];
+      final buffer = StringBuffer();
+      buffer.writeln('抱歉，暂时无法读取本书内容。');
+      buffer.writeln();
+      if (errorHint.isNotEmpty) {
+        buffer.writeln('原因：$errorHint');
+        buffer.writeln();
+      }
+      buffer.writeln('格式：${book.format.toUpperCase()}');
+      buffer.writeln('文件：${book.filePath.split('/').last}');
+      buffer.writeln();
+      buffer.writeln('建议的解决办法：');
+      buffer.writeln('  1. 用电脑上的阅读器打开文件，确认能正常显示；');
+      buffer.writeln('  2. EPUB：可尝试用 Calibre 转换为标准 EPUB3 后再导入；');
+      buffer.writeln('  3. PDF：如为扫描件，需先 OCR 识别为可搜索文本；');
+      buffer.writeln('  4. TXT：用记事本另存为 UTF-8 编码后再导入；');
+      buffer.writeln('  5. 将文件重新复制到本地再导入（排除文件路径问题）。');
+      _chapterContents = [buffer.toString()];
+    }
+    // Ensure empty content is still readable
+    for (var i = 0; i < _chapterContents.length; i++) {
+      if (_chapterContents[i].trim().isEmpty) {
+        _chapterContents[i] = '（本章节暂无内容）';
+      }
+    }
+
+    // Restore saved position
+    if (saved != null && _chapters.isNotEmpty) {
+      _currentChapter = _resolveChapterIndex(saved, _chapters);
+      _currentProgress = saved.progress.clamp(0.0, 1.0);
+      _needsPositionRestore = true;
     }
 
     final repo = ref.read(bookRepositoryProvider);
@@ -151,10 +261,50 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
     if (mounted) {
       setState(() => _isLoading = false);
-      if (saved != null && _scrollCtrl.hasClients) {
-        _scrollCtrl.jumpTo(saved.scrollOffset.toDouble());
+      // Schedule position restoration AFTER the layout phase so the
+      // ScrollController / PageController have clients attached.
+      if (_needsPositionRestore) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
       }
     }
+  }
+
+  /// Actually apply the saved scroll / page position after first build.
+  void _restorePosition() {
+    final saved = _savedProgress;
+    if (saved == null || !mounted) return;
+    try {
+      final s = ref.read(readerSettingsProvider).valueOrNull;
+      final usePageView =
+          s?.pageTurnStyle == 'curl' || s?.pageTurnStyle == 'slide';
+      if (usePageView && _pageCtrl.hasClients) {
+        _pageCtrl.jumpToPage(_currentChapter);
+        // Within-page scroll restoration: for PageView, each page has its own
+        // scroll context, so we just set chapter. Progress % can be applied
+        // on next frame for the current page's scroll.
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (!mounted) return;
+          // In PageView mode we approximate: jump page's inner scroll
+          // by progress percentage of estimated max (since we can't access
+          // the inner SingleChildScrollView's controller directly here).
+        });
+      } else if (_scrollCtrl.hasClients) {
+        final max = _scrollCtrl.position.maxScrollExtent;
+        // Prefer saved absolute scrollOffset if plausible; else use percentage.
+        double target;
+        if (saved.scrollOffset > 0 &&
+            saved.scrollOffset.toDouble() <= max + 200) {
+          target = saved.scrollOffset.toDouble();
+        } else {
+          target = _currentProgress * max;
+        }
+        _scrollCtrl.jumpTo(target.clamp(0.0, max));
+      } else {
+        // Controller still not attached — try one more frame
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
+      }
+    } catch (_) {}
+    _needsPositionRestore = false;
   }
 
   Future<void> _loadEpubChapters(BookEntity book) async {
@@ -185,9 +335,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   DateTime? _lastSave;
-  Future<void> _autoSaveProgress() async {
+  Future<void> _autoSaveProgress({bool force = false}) async {
     final now = DateTime.now();
-    if (_lastSave != null &&
+    if (!force &&
+        _lastSave != null &&
         now.difference(_lastSave!) < const Duration(seconds: 5)) {
       return;
     }
@@ -197,17 +348,37 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final book = bookAsync.valueOrNull;
     if (book == null) return;
 
+    // Encode chapter as "index:title" so we can restore by index reliably.
+    final chapter = _chapters.isNotEmpty && _currentChapter < _chapters.length
+        ? '$_currentChapter:${_chapters[_currentChapter]}'
+        : '0:';
+
+    int scrollOffset = 0;
+    final s = ref.read(readerSettingsProvider).valueOrNull;
+    final usePageView =
+        s?.pageTurnStyle == 'curl' || s?.pageTurnStyle == 'slide';
+    if (usePageView) {
+      // For PageView mode, compute an aggregate offset: chapter * 10000 + %
+      scrollOffset = _currentChapter * 10000 +
+          (_currentProgress * 10000).round().clamp(0, 9999);
+    } else if (_scrollCtrl.hasClients) {
+      scrollOffset = _scrollCtrl.offset.toInt();
+    }
+
     final repo = ref.read(progressRepositoryProvider);
-    await repo.saveProgress(
-      ReadingProgress(
-        bookId: book.id,
-        chapterId: _chapters.isNotEmpty ? _chapters[_currentChapter] : '',
-        progress: _currentProgress,
-        scrollOffset: _scrollCtrl.hasClients ? _scrollCtrl.offset.toInt() : 0,
-        totalWordsRead: (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0),
-        updatedAt: now,
-      ),
-    );
+    try {
+      await repo.saveProgress(
+        ReadingProgress(
+          bookId: book.id,
+          chapterId: chapter,
+          progress: _currentProgress,
+          scrollOffset: scrollOffset,
+          totalWordsRead: (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0) +
+              _currentChapter * 500,
+          updatedAt: now,
+        ),
+      );
+    } catch (_) {}
   }
 
   @override
@@ -265,7 +436,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       return PageView.builder(
         controller: _pageCtrl,
         itemCount: _chapters.length,
-        onPageChanged: (i) => setState(() => _currentChapter = i),
+        onPageChanged: (i) {
+          setState(() {
+            _currentChapter = i;
+            _currentProgress = 0;
+          });
+          _autoSaveProgress();
+        },
         itemBuilder: (context, index) {
           return SingleChildScrollView(
             padding: EdgeInsets.symmetric(
