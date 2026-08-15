@@ -76,9 +76,8 @@ class LumenApp extends ConsumerWidget {
         // Enforce safe area and platform-level transitions
         return GestureDetector(
           child: MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.noScaling),
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.noScaling),
             child: child ?? const SizedBox.shrink(),
           ),
         );
