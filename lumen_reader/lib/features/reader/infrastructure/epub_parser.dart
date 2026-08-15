@@ -87,14 +87,10 @@ class EpubParser {
       final dir = opfPath.contains('/')
           ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
           : '';
-      final candidates = <String>[
-        '$dir$coverHref',
-        coverHref!,
-      ];
+      final candidates = <String>['$dir$coverHref', coverHref!];
       // Try path with URL decoding (some epubs encode spaces etc.)
       for (final c in candidates) {
-        final file = archive.findFile(c) ??
-            archive.findFile(Uri.decodeFull(c));
+        final file = archive.findFile(c) ?? archive.findFile(Uri.decodeFull(c));
         if (file != null) {
           try {
             final ext = c.toLowerCase().split('.').last;
@@ -387,13 +383,16 @@ class EpubParser {
       if (id == 'cover' ||
           id == 'cover-image' ||
           id == 'coverimage' ||
-          id.contains('cover')) byId ??= href;
+          id.contains('cover'))
+        byId ??= href;
 
       // Pick the first image manifest item as last resort
       if (byMediaType == null &&
           (mediaType.startsWith('image/') ||
-              RegExp(r'\.(jpg|jpeg|png|webp)$', caseSensitive: false)
-                  .hasMatch(href))) {
+              RegExp(
+                r'\.(jpg|jpeg|png|webp)$',
+                caseSensitive: false,
+              ).hasMatch(href))) {
         byMediaType = href;
       }
     }
