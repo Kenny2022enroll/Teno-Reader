@@ -22,13 +22,16 @@ class PdfParser {
         final bytes = file.readAsBytesSync();
         final document = PdfDocument(inputBytes: bytes);
         try {
+          final info = document.documentInformation;
+          final t = info.title;
           // ignore: unnecessary_null_comparison
-          if (document.documentInformation != null) {
-            final info = document.documentInformation;
-            final t = info.title;
-            if (t != null && t.isNotEmpty) title = t;
-            final a = info.author;
-            if (a != null && a.isNotEmpty) author = a;
+          if (t != null && t.isNotEmpty) {
+            title = t;
+          }
+          final a = info.author;
+          // ignore: unnecessary_null_comparison
+          if (a != null && a.isNotEmpty) {
+            author = a;
           }
         } catch (_) {}
         document.dispose();

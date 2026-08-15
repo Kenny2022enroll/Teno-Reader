@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
@@ -79,16 +80,14 @@ class EpubParser {
       }
     }
     // 2. Fallback: search manifest for items with cover-like properties/ids
-    if (coverHref == null) {
-      coverHref = _findCoverHrefInManifest(opfDoc);
-    }
+    coverHref ??= _findCoverHrefInManifest(opfDoc);
 
     String? coverPath;
     if (coverHref != null) {
       final dir = opfPath.contains('/')
           ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
           : '';
-      final candidates = <String>['$dir$coverHref', coverHref!];
+      final candidates = <String>['$dir$coverHref', coverHref];
       // Try path with URL decoding (some epubs encode spaces etc.)
       for (final c in candidates) {
         final file = archive.findFile(c) ?? archive.findFile(Uri.decodeFull(c));
@@ -383,7 +382,9 @@ class EpubParser {
       if (id == 'cover' ||
           id == 'cover-image' ||
           id == 'coverimage' ||
-          id.contains('cover')) byId ??= href;
+          id.contains('cover')) {
+        byId ??= href;
+      }
 
       // Pick the first image manifest item as last resort
       if (byMediaType == null &&

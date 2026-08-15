@@ -431,7 +431,7 @@ class _ShelfPlank extends StatelessWidget {
     return Container(
       height: 22,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.vertical(
+        borderRadius: const BorderRadius.vertical(
           top: Radius.zero,
           bottom: Radius.circular(AppRadius.sm),
         ),
@@ -905,23 +905,23 @@ class _BookPageEdge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
             // paper transition from cover side
-            const Color(0xFFF5EEDD),
-            const Color(0xFFF8F2E0),
-            const Color(0xFFFBF5E5),
+            Color(0xFFF5EEDD),
+            Color(0xFFF8F2E0),
+            Color(0xFFFBF5E5),
             // outermost: catches the light brighter
-            const Color(0xFFFFFAF0),
+            Color(0xFFFFFAF0),
             // subtle shadow at the very edge
-            const Color(0xFFEDE3CB),
+            Color(0xFFEDE3CB),
           ],
-          stops: const [0.0, 0.3, 0.65, 0.85, 1.0],
+          stops: [0.0, 0.3, 0.65, 0.85, 1.0],
         ),
-        borderRadius: const BorderRadius.horizontal(
+        borderRadius: BorderRadius.horizontal(
           right: Radius.circular(AppRadius.sm),
         ),
       ),
@@ -997,13 +997,13 @@ class _CoverReflection extends StatelessWidget {
                   bottom: 0,
                   width: 9,
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                         colors: [
-                          const Color(0xFF2A1A0E),
-                          const Color(0xFF5A3A22),
+                          Color(0xFF2A1A0E),
+                          Color(0xFF5A3A22),
                         ],
                       ),
                     ),
