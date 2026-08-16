@@ -153,11 +153,15 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
         AppSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: (isDark ? const Color(0xFF14100C) : const Color(0xFFAF8A59))
+        color: (isDark
+                ? const Color(0xFF14100C)
+                : const Color(0xFFAF8A59))
             .withOpacity(0.55),
         border: Border(
           bottom: BorderSide(
-            color: (isDark ? Colors.black26 : Colors.brown.withOpacity(0.35)),
+            color: isDark
+                ? Colors.black26
+                : Colors.brown.withOpacity(0.35),
             width: 1,
           ),
         ),
@@ -204,9 +208,10 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color:
-                    (isDark ? const Color(0xFF2C2018) : const Color(0xFF8B6239))
-                        .withOpacity(0.9),
+                color: (isDark
+                        ? const Color(0xFF2C2018)
+                        : const Color(0xFF8B6239))
+                    .withOpacity(0.9),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
@@ -229,9 +234,10 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color:
-                    (isDark ? const Color(0xFF2C2018) : const Color(0xFF8B6239))
-                        .withOpacity(0.9),
+                color: (isDark
+                        ? const Color(0xFF2C2018)
+                        : const Color(0xFF8B6239))
+                    .withOpacity(0.9),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: const Icon(Icons.add, color: Colors.white, size: 20),
@@ -244,9 +250,10 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color:
-                    (isDark ? const Color(0xFF2C2018) : const Color(0xFF8B6239))
-                        .withOpacity(0.9),
+                color: (isDark
+                        ? const Color(0xFF2C2018)
+                        : const Color(0xFF8B6239))
+                    .withOpacity(0.9),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
@@ -572,7 +579,9 @@ class _WoodGrainPainter extends CustomPainter {
 
     for (int i = 0; i < 6; i++) {
       final y = 4 + rng.nextDouble() * (size.height - 8);
-      final color = (isDark ? const Color(0xFF1A120B) : const Color(0xFF5C3E22))
+      final color = (isDark
+              ? const Color(0xFF1A120B)
+              : const Color(0xFF5C3E22))
           .withOpacity(0.2 + rng.nextDouble() * 0.25);
       paint.color = color;
       final path = Path()..moveTo(0, y);
@@ -1812,7 +1821,9 @@ class _EmptyShelf extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.xl),
           decoration: BoxDecoration(
-            color: (isDark ? const Color(0xFF2C2018) : Colors.white)
+            color: (isDark
+                    ? const Color(0xFF2C2018)
+                    : Colors.white)
                 .withOpacity(0.92),
             borderRadius: BorderRadius.circular(AppRadius.xl),
             boxShadow: [
