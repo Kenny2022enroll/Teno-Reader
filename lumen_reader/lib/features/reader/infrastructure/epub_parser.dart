@@ -71,15 +71,15 @@ class EpubParser {
     try {
       final tmpExt =
           (ext == 'png' || ext == 'jpeg' || ext == 'webp' || ext == 'gif')
-              ? ext
-              : 'jpg';
+          ? ext
+          : 'jpg';
       final tmp = File(_coverTmpPath(path, tmpExt));
       if (tmp.existsSync() && tmp.lengthSync() > 1024) {
         return tmp.path;
       }
       tmp.writeAsBytesSync(
         fileContent is Uint8List
-            ? fileContent as Uint8List
+            ? fileContent
             : Uint8List.fromList(fileContent as List<int>),
       );
       if (tmp.existsSync() && tmp.lengthSync() > 0) {
@@ -93,8 +93,6 @@ class EpubParser {
 
   static bool _isImageFile(ArchiveFile file) {
     final name = file.name.toLowerCase();
-    final mediaType = (file.compressType == null ? '' : '').toLowerCase();
-    if (mediaType.startsWith('image/')) return true;
     return RegExp(
       r'\.(jpg|jpeg|png|webp|gif)$',
       caseSensitive: false,
@@ -198,7 +196,8 @@ class EpubParser {
         imageFiles.sort((a, b) => b.size.compareTo(a.size));
         final largest = imageFiles.first;
         final name = largest.name.toLowerCase();
-        final ext = RegExp(
+        final ext =
+            RegExp(
               r'\.(jpg|jpeg|png|webp|gif)$',
               caseSensitive: false,
             ).firstMatch(name)?.group(1) ??
@@ -297,15 +296,16 @@ class EpubParser {
           final ext = safeName.contains('.')
               ? safeName.split('.').last.toLowerCase()
               : 'png';
-          final validExt =
-              RegExp(r'^(jpg|jpeg|png|webp|gif)$').hasMatch(ext) ? ext : 'png';
+          if (!RegExp(r'^(jpg|jpeg|png|webp|gif)$').hasMatch(ext)) {
+            return null;
+          }
           final outPath = '$tmpDir/${bookTag}_img_$safeName';
           try {
             final f = File(outPath);
             if (!f.existsSync() || f.lengthSync() <= 0) {
               f.writeAsBytesSync(
                 imgFile.content is Uint8List
-                    ? imgFile.content as Uint8List
+                    ? imgFile.content
                     : Uint8List.fromList(imgFile.content as List<int>),
               );
             }
@@ -357,7 +357,8 @@ class EpubParser {
 
     final combined = '$baseDir$clean';
     var normalized = _normalizePath(combined);
-    var f = archive.findFile(normalized) ??
+    var f =
+        archive.findFile(normalized) ??
         archive.findFile(Uri.decodeFull(normalized));
     if (f != null) return normalized;
 

@@ -89,26 +89,22 @@ class PdfParser {
 
       final gradient = ui.Gradient.linear(
         const Offset(0, 0),
-        const Offset(width.toDouble(), height.toDouble()),
+        const Offset(240.0, 320.0),
         [const Color(0xFF667eea), const Color(0xFF764ba2)],
       );
       final paint = Paint()..shader = gradient;
-      canvas.drawRect(
-        const Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
-        paint,
-      );
+      canvas.drawRect(const Rect.fromLTWH(0, 0, 240.0, 320.0), paint);
 
       final builder = ui.ParagraphBuilder(
         ui.ParagraphStyle(
           textAlign: TextAlign.center,
           fontSize: 28,
           fontWeight: FontWeight.w700,
-          color: const Color(0xFFFFFFFF),
         ),
       )..pushStyle(ui.TextStyle(color: const Color(0xFFFFFFFF)));
       builder.addText('PDF');
       final paragraph = builder.build()
-        ..layout(const ui.ParagraphConstraints(width: width.toDouble()));
+        ..layout(const ui.ParagraphConstraints(width: 240.0));
       canvas.drawParagraph(
         paragraph,
         Offset(0, (height - paragraph.height) / 2),
