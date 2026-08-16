@@ -480,7 +480,7 @@ class EpubParser {
   static String _stripHtmlTagsWithImages(
       String input, String? Function(String imgSrc) onImage) {
     final imgRegex = RegExp(
-      r'<img\s[^>]*src\s*=\s*["\']([^"\']+)["\'][^>]*>',
+      r"""<img\s[^>]*src\s*=\s*["']([^"']+)["'][^>]*>""",
       caseSensitive: false,
       dotAll: true,
     );
