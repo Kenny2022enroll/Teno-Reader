@@ -71,8 +71,8 @@ class EpubParser {
     try {
       final tmpExt =
           (ext == 'png' || ext == 'jpeg' || ext == 'webp' || ext == 'gif')
-          ? ext
-          : 'jpg';
+              ? ext
+              : 'jpg';
       final tmp = File(_coverTmpPath(path, tmpExt));
       if (tmp.existsSync() && tmp.lengthSync() > 1024) {
         return tmp.path;
@@ -196,8 +196,7 @@ class EpubParser {
         imageFiles.sort((a, b) => b.size.compareTo(a.size));
         final largest = imageFiles.first;
         final name = largest.name.toLowerCase();
-        final ext =
-            RegExp(
+        final ext = RegExp(
               r'\.(jpg|jpeg|png|webp|gif)$',
               caseSensitive: false,
             ).firstMatch(name)?.group(1) ??
@@ -357,8 +356,7 @@ class EpubParser {
 
     final combined = '$baseDir$clean';
     var normalized = _normalizePath(combined);
-    var f =
-        archive.findFile(normalized) ??
+    var f = archive.findFile(normalized) ??
         archive.findFile(Uri.decodeFull(normalized));
     if (f != null) return normalized;
 
