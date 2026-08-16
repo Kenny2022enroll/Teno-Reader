@@ -16,7 +16,8 @@ String _join(String a, String b) {
 
 class WebDAVService {
   WebDAVService(Dio dio, WebDAVSettings settings)
-      : _dio = Dio(BaseOptions(
+    : _dio = Dio(
+        BaseOptions(
           baseUrl: _normalizeBaseUrl(settings.url),
           headers: {
             'Authorization':
@@ -25,8 +26,9 @@ class WebDAVService {
           connectTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 30),
           sendTimeout: const Duration(seconds: 60),
-        )),
-        _settings = settings;
+        ),
+      ),
+      _settings = settings;
 
   final Dio _dio;
   final WebDAVSettings _settings;
@@ -49,10 +51,7 @@ class WebDAVService {
       final path = _fullPath('');
       await _dio.request(
         path,
-        options: Options(
-          method: 'PROPFIND',
-          headers: {'Depth': '0'},
-        ),
+        options: Options(method: 'PROPFIND', headers: {'Depth': '0'}),
       );
       return const WebDAVSyncResult.success();
     } on DioException catch (e) {
@@ -102,9 +101,7 @@ class WebDAVService {
       await _dio.put(
         _fullPath('/progress.json'),
         data: jsonEncode(progressPayload),
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
       final highlightsPayload = {
@@ -114,9 +111,7 @@ class WebDAVService {
       await _dio.put(
         _fullPath('/highlights.json'),
         data: jsonEncode(highlightsPayload),
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
       final bookmarksPayload = {
@@ -126,9 +121,7 @@ class WebDAVService {
       await _dio.put(
         _fullPath('/bookmarks.json'),
         data: jsonEncode(bookmarksPayload),
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
       return WebDAVSyncResult.success(
@@ -204,7 +197,9 @@ class WebDAVService {
   }
 
   Future<WebDAVSyncResult> uploadBook(
-      String localFilePath, String remoteName) async {
+    String localFilePath,
+    String remoteName,
+  ) async {
     try {
       await _ensureRemoteDir('/books');
       final file = File(localFilePath);
@@ -214,11 +209,7 @@ class WebDAVService {
       await _dio.put(
         _fullPath('/books/$remoteName'),
         data: stream,
-        options: Options(
-          headers: {
-            Headers.contentLengthHeader: length,
-          },
-        ),
+        options: Options(headers: {Headers.contentLengthHeader: length}),
       );
 
       return const WebDAVSyncResult.success(uploaded: 1);
@@ -230,10 +221,7 @@ class WebDAVService {
   Future<String?> downloadBook(String remoteName, String localDir) async {
     try {
       final localPath = _join(localDir, remoteName);
-      await _dio.download(
-        _fullPath('/books/$remoteName'),
-        localPath,
-      );
+      await _dio.download(_fullPath('/books/$remoteName'), localPath);
       return localPath;
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;

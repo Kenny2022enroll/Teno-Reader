@@ -52,11 +52,11 @@ class WebDAVSyncResult {
   final int? downloaded;
 
   const WebDAVSyncResult.success({this.uploaded, this.downloaded})
-      : ok = true,
-        message = null;
+    : ok = true,
+      message = null;
 
   const WebDAVSyncResult.failed(this.message)
-      : ok = false,
-        uploaded = null,
-        downloaded = null;
+    : ok = false,
+      uploaded = null,
+      downloaded = null;
 }

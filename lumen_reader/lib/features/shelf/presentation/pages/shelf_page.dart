@@ -14,10 +14,7 @@ import '../../../reader/domain/entities/reading_entities.dart';
 import '../../../reader/infrastructure/book_repository.dart';
 import '../../../reader/infrastructure/progress_repository.dart';
 
-enum BookDisplayMode {
-  coverFlat,
-  spineOut,
-}
+enum BookDisplayMode { coverFlat, spineOut }
 
 const String _prefsDisplayModeKey = 'shelf_display_mode';
 
@@ -28,8 +25,8 @@ final shelfBooksProvider = FutureProvider<List<BookEntity>>((ref) async {
 
 final displayModeProvider =
     StateNotifierProvider<DisplayModeNotifier, BookDisplayMode>((ref) {
-  return DisplayModeNotifier();
-});
+      return DisplayModeNotifier();
+    });
 
 class DisplayModeNotifier extends StateNotifier<BookDisplayMode> {
   DisplayModeNotifier() : super(BookDisplayMode.coverFlat) {
@@ -153,15 +150,11 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
         AppSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: (isDark
-                ? const Color(0xFF14100C)
-                : const Color(0xFFAF8A59))
+        color: (isDark ? const Color(0xFF14100C) : const Color(0xFFAF8A59))
             .withOpacity(0.55),
         border: Border(
           bottom: BorderSide(
-            color: isDark
-                ? Colors.black26
-                : Colors.brown.withOpacity(0.35),
+            color: isDark ? Colors.black26 : Colors.brown.withOpacity(0.35),
             width: 1,
           ),
         ),
@@ -208,10 +201,9 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: (isDark
-                        ? const Color(0xFF2C2018)
-                        : const Color(0xFF8B6239))
-                    .withOpacity(0.9),
+                color:
+                    (isDark ? const Color(0xFF2C2018) : const Color(0xFF8B6239))
+                        .withOpacity(0.9),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
@@ -234,10 +226,9 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: (isDark
-                        ? const Color(0xFF2C2018)
-                        : const Color(0xFF8B6239))
-                    .withOpacity(0.9),
+                color:
+                    (isDark ? const Color(0xFF2C2018) : const Color(0xFF8B6239))
+                        .withOpacity(0.9),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: const Icon(Icons.add, color: Colors.white, size: 20),
@@ -250,16 +241,16 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: (isDark
-                        ? const Color(0xFF2C2018)
-                        : const Color(0xFF8B6239))
-                    .withOpacity(0.9),
+                color:
+                    (isDark ? const Color(0xFF2C2018) : const Color(0xFF8B6239))
+                        .withOpacity(0.9),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
                 Icons.settings_outlined,
-                color:
-                    isDark ? const Color(0xFFE0C097) : const Color(0xFFF5E6CC),
+                color: isDark
+                    ? const Color(0xFFE0C097)
+                    : const Color(0xFFF5E6CC),
                 size: 20,
               ),
             ),
@@ -275,10 +266,12 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
     final bgColor = isDark
         ? const Color(0xFF2C2018).withOpacity(0.75)
         : const Color(0xFF8B6239).withOpacity(0.35);
-    final hintColor =
-        isDark ? const Color(0xFFA08568) : const Color(0xFF5C3E22);
-    final textColor =
-        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3F2A18);
+    final hintColor = isDark
+        ? const Color(0xFFA08568)
+        : const Color(0xFF5C3E22);
+    final textColor = isDark
+        ? const Color(0xFFEFE0C7)
+        : const Color(0xFF3F2A18);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -410,8 +403,9 @@ class _BookShelfGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxExtent =
-            displayMode == BookDisplayMode.coverFlat ? 160.0 : 110.0;
+        final maxExtent = displayMode == BookDisplayMode.coverFlat
+            ? 160.0
+            : 110.0;
         const spacing = AppSpacing.md;
         final crossAxisCount =
             ((constraints.maxWidth + spacing) / (maxExtent + spacing)).floor();
@@ -579,9 +573,7 @@ class _WoodGrainPainter extends CustomPainter {
 
     for (int i = 0; i < 6; i++) {
       final y = 4 + rng.nextDouble() * (size.height - 8);
-      final color = (isDark
-              ? const Color(0xFF1A120B)
-              : const Color(0xFF5C3E22))
+      final color = (isDark ? const Color(0xFF1A120B) : const Color(0xFF5C3E22))
           .withOpacity(0.2 + rng.nextDouble() * 0.25);
       paint.color = color;
       final path = Path()..moveTo(0, y);
@@ -663,10 +655,7 @@ class _BookCardState extends ConsumerState<_BookCard> {
             ),
             SizedBox(
               height: 48,
-              child: _CoverReflection(
-                book: widget.book,
-                isDark: widget.isDark,
-              ),
+              child: _CoverReflection(book: widget.book, isDark: widget.isDark),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
@@ -723,10 +712,7 @@ class _BookCardState extends ConsumerState<_BookCard> {
           child: GestureDetector(
             onTap: () => _showMenu(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 6,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Text(
                 '•••',
                 style: TextStyle(
@@ -754,17 +740,11 @@ class _BookCardState extends ConsumerState<_BookCard> {
           children: [
             AspectRatio(
               aspectRatio: 0.22,
-              child: _SpineOutBook(
-                book: widget.book,
-                isDark: widget.isDark,
-              ),
+              child: _SpineOutBook(book: widget.book, isDark: widget.isDark),
             ),
             SizedBox(
               height: 40,
-              child: _SpineReflection(
-                book: widget.book,
-                isDark: widget.isDark,
-              ),
+              child: _SpineReflection(book: widget.book, isDark: widget.isDark),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
@@ -823,10 +803,7 @@ class _BookCardState extends ConsumerState<_BookCard> {
           child: GestureDetector(
             onTap: () => _showMenu(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: 2,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               child: Text(
                 '•••',
                 style: TextStyle(
@@ -902,8 +879,9 @@ class _BookCardState extends ConsumerState<_BookCard> {
   void _showBookDetails(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final textColor =
-        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3A2614);
+    final textColor = isDark
+        ? const Color(0xFFEFE0C7)
+        : const Color(0xFF3A2614);
     final subColor = isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
 
     showDialog<void>(
@@ -950,10 +928,7 @@ class _BookCardState extends ConsumerState<_BookCard> {
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             widget.book.author,
-                            style: TextStyle(
-                              color: subColor,
-                              fontSize: 13,
-                            ),
+                            style: TextStyle(color: subColor, fontSize: 13),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Container(
@@ -1064,8 +1039,9 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3A2614);
+    final textColor = isDark
+        ? const Color(0xFFEFE0C7)
+        : const Color(0xFF3A2614);
     final subColor = isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1088,10 +1064,7 @@ class _DetailRow extends StatelessWidget {
               value,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: textColor, fontSize: 13),
             ),
           ),
         ],
@@ -1258,7 +1231,8 @@ class _BookSpine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorSeed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+    final colorSeed =
+        book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final palette = <Color>[
       const Color(0xFF3A1F11),
@@ -1322,10 +1296,11 @@ class _SpineGrainPainter extends CustomPainter {
     for (int i = 0; i < 14; i++) {
       final x = rng.nextDouble() * size.width;
       final y = rng.nextDouble() * size.height;
-      speck.color = (rng.nextBool()
-              ? Colors.black
-              : Color.lerp(spineColor, Colors.white, 0.3)!)
-          .withOpacity(rng.nextDouble() * 0.4);
+      speck.color =
+          (rng.nextBool()
+                  ? Colors.black
+                  : Color.lerp(spineColor, Colors.white, 0.3)!)
+              .withOpacity(rng.nextDouble() * 0.4);
       canvas.drawCircle(Offset(x, y), 0.5, speck);
     }
   }
@@ -1429,10 +1404,7 @@ class _CoverReflection extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
-                        colors: [
-                          Color(0xFF2A1A0E),
-                          Color(0xFF5A3A22),
-                        ],
+                        colors: [Color(0xFF2A1A0E), Color(0xFF5A3A22)],
                       ),
                     ),
                   ),
@@ -1463,7 +1435,8 @@ class _SpineOutBook extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorSeed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+    final colorSeed =
+        book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final spinePalette = <Color>[
       const Color(0xFF6B3410),
@@ -1503,13 +1476,7 @@ class _SpineOutBook extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            darker,
-            baseColor,
-            lighter,
-            baseColor,
-            darker,
-          ],
+          colors: [darker, baseColor, lighter, baseColor, darker],
           stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
         ),
       ),
@@ -1628,19 +1595,13 @@ class _SpineOutBook extends StatelessWidget {
               top: 6,
               left: 4,
               right: 4,
-              child: Container(
-                height: 1,
-                color: Colors.black.withOpacity(0.3),
-              ),
+              child: Container(height: 1, color: Colors.black.withOpacity(0.3)),
             ),
             Positioned(
               bottom: 6,
               left: 4,
               right: 4,
-              child: Container(
-                height: 1,
-                color: Colors.black.withOpacity(0.3),
-              ),
+              child: Container(height: 1, color: Colors.black.withOpacity(0.3)),
             ),
           ],
         ),
@@ -1656,7 +1617,8 @@ class _SpineReflection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorSeed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+    final colorSeed =
+        book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final spinePalette = <Color>[
       const Color(0xFF6B3410),
@@ -1691,11 +1653,7 @@ class _SpineReflection extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [
-                    darker,
-                    baseColor,
-                    darker,
-                  ],
+                  colors: [darker, baseColor, darker],
                   stops: const [0.0, 0.5, 1.0],
                 ),
               ),
@@ -1723,7 +1681,8 @@ class _FallbackCover extends StatelessWidget {
       const Color(0xFF01579B),
       const Color(0xFF880E4F),
     ];
-    final seed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+    final seed =
+        book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final i = seed % colors.length;
     final base = colors[i];
@@ -1811,8 +1770,9 @@ class _EmptyShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3A2614);
+    final textColor = isDark
+        ? const Color(0xFFEFE0C7)
+        : const Color(0xFF3A2614);
     final subColor = isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
 
     return Center(
@@ -1821,9 +1781,7 @@ class _EmptyShelf extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.xl),
           decoration: BoxDecoration(
-            color: (isDark
-                    ? const Color(0xFF2C2018)
-                    : Colors.white)
+            color: (isDark ? const Color(0xFF2C2018) : Colors.white)
                 .withOpacity(0.92),
             borderRadius: BorderRadius.circular(AppRadius.xl),
             boxShadow: [
@@ -1877,9 +1835,7 @@ class _EmptyShelf extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                isSearch
-                    ? '尝试使用其他关键字'
-                    : '导入 EPUB / PDF / TXT 文件开启阅读之旅',
+                isSearch ? '尝试使用其他关键字' : '导入 EPUB / PDF / TXT 文件开启阅读之旅',
                 style: TextStyle(color: subColor, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
