@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/webdav/webdav_models.dart';
 import '../../../../core/webdav/webdav_service.dart';
@@ -27,7 +26,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _obscurePassword = true;
   bool _webdavExpanded = false;
   bool _autoSync = true;
-  bool _loadingSettings = true;
 
   @override
   void initState() {
@@ -55,19 +53,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _autoSync = s.autoSync;
     }
     if (mounted) {
-      setState(() => _loadingSettings = false);
+      setState(() {});
     }
   }
 
   WebDAVSettings _currentSettings() => WebDAVSettings(
-    url: _urlController.text.trim(),
-    username: _usernameController.text.trim(),
-    password: _passwordController.text,
-    rootFolder: _rootFolderController.text.trim().isEmpty
-        ? '/LumenReader'
-        : _rootFolderController.text.trim(),
-    autoSync: _autoSync,
-  );
+        url: _urlController.text.trim(),
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+        rootFolder: _rootFolderController.text.trim().isEmpty
+            ? '/LumenReader'
+            : _rootFolderController.text.trim(),
+        autoSync: _autoSync,
+      );
 
   void _showSnack(String message, {bool success = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -192,8 +190,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     subtitle: s.pageTurnStyle == 'slide'
                         ? '滑动'
                         : s.pageTurnStyle == 'curl'
-                        ? '翻页'
-                        : '无',
+                            ? '翻页'
+                            : '无',
                     trailing: DropdownButton<String>(
                       value: s.pageTurnStyle,
                       items: const [
@@ -346,7 +344,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         controller: _urlController,
                         decoration: const InputDecoration(
                           labelText: '服务器 URL',
-                          hintText: 'https://dav.example.com/remote.php/dav/files/user',
+                          hintText:
+                              'https://dav.example.com/remote.php/dav/files/user',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.link_outlined),
                         ),
