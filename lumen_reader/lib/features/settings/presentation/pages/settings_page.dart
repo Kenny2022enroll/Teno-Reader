@@ -1,8 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/webdav/webdav_models.dart';
+import '../../../../core/webdav/webdav_service.dart';
 import '../../../reader/domain/entities/reading_entities.dart';
 import '../../../reader/infrastructure/book_repository.dart';
 import '../../../reader/presentation/pages/reader_page.dart';
@@ -15,6 +19,140 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
+  final _urlController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _rootFolderController = TextEditingController(text: '/LumenReader');
+
+  bool _obscurePassword = true;
+  bool _webdavExpanded = false;
+  bool _autoSync = true;
+  bool _loadingSettings = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWebDAVSettings();
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _rootFolderController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadWebDAVSettings() async {
+    final storage = ref.read(storageServiceProvider);
+    final s = await storage.loadWebDAVSettings();
+    if (s != null) {
+      _urlController.text = s.url;
+      _usernameController.text = s.username;
+      _passwordController.text = s.password;
+      _rootFolderController.text = s.rootFolder;
+      _autoSync = s.autoSync;
+    }
+    if (mounted) {
+      setState(() => _loadingSettings = false);
+    }
+  }
+
+  WebDAVSettings _currentSettings() => WebDAVSettings(
+        url: _urlController.text.trim(),
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+        rootFolder: _rootFolderController.text.trim().isEmpty
+            ? '/LumenReader'
+            : _rootFolderController.text.trim(),
+        autoSync: _autoSync,
+      );
+
+  void _showSnack(String message, {bool success = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: success
+            ? Theme.of(context).colorScheme.primary.withOpacity(0.85)
+            : Theme.of(context).colorScheme.error.withOpacity(0.85),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _testConnection() async {
+    final s = _currentSettings();
+    if (!s.isConfigured) {
+      _showSnack('请先填写服务器地址、用户名和密码', success: false);
+      return;
+    }
+    final service = WebDAVService(Dio(), s);
+    final result = await service.testConnection();
+    if (result.ok) {
+      _showSnack('连接成功');
+    } else {
+      _showSnack('连接失败: ${result.message}', success: false);
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    final s = _currentSettings();
+    final storage = ref.read(storageServiceProvider);
+    await storage.saveWebDAVSettings(s);
+    _showSnack('已保存 WebDAV 设置');
+  }
+
+  Future<void> _syncNow() async {
+    final s = _currentSettings();
+    if (!s.isConfigured) {
+      _showSnack('请先配置 WebDAV 并保存', success: false);
+      return;
+    }
+    final storage = ref.read(storageServiceProvider);
+    final service = WebDAVService(Dio(), s);
+
+    final progresses = storage.progress.values.toList();
+    final highlights = storage.highlights.values.toList();
+    final bookmarks = storage.bookmarks.values.toList();
+
+    final uploadResult = await service.upload(
+      progresses: progresses,
+      highlights: highlights,
+      bookmarks: bookmarks,
+    );
+    if (!uploadResult.ok) {
+      _showSnack('上传失败: ${uploadResult.message}', success: false);
+      return;
+    }
+
+    final downloadResult = await service.download(
+      onProgress: (list) async {
+        for (final p in list) {
+          await storage.progress.put(p.bookId, p);
+        }
+      },
+      onHighlights: (list) async {
+        for (final h in list) {
+          await storage.highlights.put(h.id, h);
+        }
+      },
+      onBookmarks: (list) async {
+        for (final b in list) {
+          await storage.bookmarks.put(b.id, b);
+        }
+      },
+    );
+
+    if (downloadResult.ok) {
+      _showSnack(
+        '同步完成：已上传 ${uploadResult.uploaded ?? 0} / 已下载 ${downloadResult.downloaded ?? 0}',
+      );
+    } else {
+      _showSnack('下载失败: ${downloadResult.message}', success: false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(readerSettingsProvider);
@@ -160,6 +298,163 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
+              _Section(
+                title: 'WebDAV 同步',
+                children: [
+                  SwitchListTile.adaptive(
+                    value: _autoSync,
+                    onChanged: (v) {
+                      setState(() => _autoSync = v);
+                    },
+                    secondary: const Icon(Icons.folder_special_outlined),
+                    title: const Text('WebDAV 同步'),
+                    subtitle: const Text('通过 WebDAV 备份进度与书签'),
+                    isThreeLine: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Switch.adaptive(
+                          value: _autoSync,
+                          onChanged: (v) {
+                            setState(() => _autoSync = v);
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _webdavExpanded
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                          ),
+                          onPressed: () {
+                            setState(() => _webdavExpanded = !_webdavExpanded);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_webdavExpanded) ...[
+                    Divider(
+                      height: 0,
+                      indent: 16,
+                      endIndent: 16,
+                      color: Theme.of(context).dividerColor,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        AppSpacing.sm,
+                      ),
+                      child: TextField(
+                        controller: _urlController,
+                        decoration: const InputDecoration(
+                          labelText: '服务器 URL',
+                          hintText:
+                              'https://dav.example.com/remote.php/dav/files/user',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.link_outlined),
+                        ),
+                        keyboardType: TextInputType.url,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.xs,
+                      ),
+                      child: TextField(
+                        controller: _usernameController,
+                        decoration: const InputDecoration(
+                          labelText: '用户名',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.xs,
+                      ),
+                      child: TextField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: '密码',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.xs,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                      ),
+                      child: TextField(
+                        controller: _rootFolderController,
+                        decoration: const InputDecoration(
+                          labelText: '根目录',
+                          hintText: '/LumenReader',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.folder_outlined),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        0,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _testConnection,
+                              icon: const Icon(Icons.network_check_outlined),
+                              label: const Text('测试连接'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _saveSettings,
+                              icon: const Icon(Icons.save_outlined),
+                              label: const Text('保存'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _syncNow,
+                              icon: const Icon(Icons.sync_outlined),
+                              label: const Text('立即同步'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
               const _Section(
                 title: '关于',
                 children: [
@@ -257,7 +552,9 @@ class _Section extends StatelessWidget {
             children: [
               for (int i = 0; i < children.length; i++) ...[
                 children[i],
-                if (i != children.length - 1)
+                if (i != children.length - 1 &&
+                    !(children[i] is SwitchListTile &&
+                        children[i + 1] is Padding))
                   Divider(
                     height: 0,
                     indent: 16,

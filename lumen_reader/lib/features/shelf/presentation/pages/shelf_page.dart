@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -13,10 +14,54 @@ import '../../../reader/domain/entities/reading_entities.dart';
 import '../../../reader/infrastructure/book_repository.dart';
 import '../../../reader/infrastructure/progress_repository.dart';
 
+enum BookDisplayMode {
+  coverFlat,
+  spineOut,
+}
+
+const String _prefsDisplayModeKey = 'shelf_display_mode';
+
 final shelfBooksProvider = FutureProvider<List<BookEntity>>((ref) async {
   final repo = ref.watch(bookRepositoryProvider);
   return repo.fetchAllBooks();
 });
+
+final displayModeProvider =
+    StateNotifierProvider<DisplayModeNotifier, BookDisplayMode>((ref) {
+  return DisplayModeNotifier();
+});
+
+class DisplayModeNotifier extends StateNotifier<BookDisplayMode> {
+  DisplayModeNotifier() : super(BookDisplayMode.coverFlat) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final idx = prefs.getInt(_prefsDisplayModeKey) ?? 0;
+      if (idx >= 0 && idx < BookDisplayMode.values.length) {
+        state = BookDisplayMode.values[idx];
+      }
+    } catch (_) {}
+  }
+
+  Future<void> setMode(BookDisplayMode mode) async {
+    state = mode;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_prefsDisplayModeKey, mode.index);
+    } catch (_) {}
+  }
+
+  void toggle() {
+    setMode(
+      state == BookDisplayMode.coverFlat
+          ? BookDisplayMode.spineOut
+          : BookDisplayMode.coverFlat,
+    );
+  }
+}
 
 class ShelfPage extends ConsumerStatefulWidget {
   const ShelfPage({super.key});
@@ -67,10 +112,8 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
     );
   }
 
-  /// Wooden bookshelf layered background (simulated wood grain via gradients).
   BoxDecoration _buildShelfBackground(bool isDark) {
     if (isDark) {
-      // Dark walnut
       return const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -85,7 +128,6 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
         ),
       );
     }
-    // Light oak wood grain
     return const BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter,
@@ -102,6 +144,7 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
   }
 
   Widget _buildShelfAppBar(ThemeData theme, bool isDark) {
+    final displayMode = ref.watch(displayModeProvider);
     return Container(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -155,6 +198,31 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
                 ),
               ),
             ),
+          ),
+          IconButton(
+            icon: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color:
+                    (isDark ? const Color(0xFF2C2018) : const Color(0xFF8B6239))
+                        .withOpacity(0.9),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(
+                displayMode == BookDisplayMode.coverFlat
+                    ? Icons.view_agenda_outlined
+                    : Icons.auto_stories_outlined,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            tooltip: displayMode == BookDisplayMode.coverFlat
+                ? '切换到书脊朝外'
+                : '切换到正面朝上',
+            onPressed: () {
+              ref.read(displayModeProvider.notifier).toggle();
+            },
           ),
           IconButton(
             icon: Container(
@@ -248,6 +316,7 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
 
   Widget _buildContent(ThemeData theme, bool isDark) {
     final booksAsync = ref.watch(shelfBooksProvider);
+    final displayMode = ref.watch(displayModeProvider);
 
     return booksAsync.when(
       data: (books) {
@@ -266,7 +335,11 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
             isDark: isDark,
           );
         }
-        return _BookShelfGrid(books: filtered, isDark: isDark);
+        return _BookShelfGrid(
+          books: filtered,
+          isDark: isDark,
+          displayMode: displayMode,
+        );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
@@ -314,26 +387,29 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
 }
 
 // ===========================================================================
-// SKEUOMORPHIC BOOK SHELF GRID — each row sits on a wooden shelf plank
+// SKEUOMORPHIC BOOK SHELF GRID
 // ===========================================================================
 class _BookShelfGrid extends ConsumerWidget {
-  const _BookShelfGrid({required this.books, required this.isDark});
+  const _BookShelfGrid({
+    required this.books,
+    required this.isDark,
+    required this.displayMode,
+  });
   final List<BookEntity> books;
   final bool isDark;
+  final BookDisplayMode displayMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Figure out how many columns the SliverGridDelegateWithMaxCrossAxisExtent
-    // will produce given maxCrossAxisExtent = 160.
     return LayoutBuilder(
       builder: (context, constraints) {
-        const maxExtent = 160.0;
+        final maxExtent =
+            displayMode == BookDisplayMode.coverFlat ? 160.0 : 110.0;
         const spacing = AppSpacing.md;
         final crossAxisCount =
             ((constraints.maxWidth + spacing) / (maxExtent + spacing)).floor();
         final cols = crossAxisCount < 2 ? 2 : crossAxisCount;
 
-        // Build rows of shelf planks
         final rows = (books.length / cols).ceil();
         final List<Widget> children = [];
 
@@ -341,13 +417,13 @@ class _BookShelfGrid extends ConsumerWidget {
           final start = r * cols;
           final end = (start + cols).clamp(0, books.length);
 
-          // Book row with shelf plank under it
           children.add(
             _ShelfPlankRow(
               isDark: isDark,
               rowIndex: r,
               books: books.sublist(start, end),
               cols: cols,
+              displayMode: displayMode,
             ),
           );
         }
@@ -375,11 +451,13 @@ class _ShelfPlankRow extends StatelessWidget {
     required this.rowIndex,
     required this.books,
     required this.cols,
+    required this.displayMode,
   });
   final bool isDark;
   final int rowIndex;
   final List<BookEntity> books;
   final int cols;
+  final BookDisplayMode displayMode;
 
   @override
   Widget build(BuildContext context) {
@@ -388,8 +466,6 @@ class _ShelfPlankRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // The row of books — the cover+reflection combo is laid out so
-          // book covers visually rest on the shelf plank below.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
             child: Row(
@@ -402,15 +478,17 @@ class _ShelfPlankRow extends StatelessWidget {
                       horizontal: AppSpacing.xs,
                     ),
                     child: book != null
-                        ? _BookCard(book: book, isDark: isDark)
+                        ? _BookCard(
+                            book: book,
+                            isDark: isDark,
+                            displayMode: displayMode,
+                          )
                         : const SizedBox.shrink(),
                   ),
                 );
               }),
             ),
           ),
-          // The shelf plank visually positioned so the book covers
-          // appear to rest on top of it.
           Transform.translate(
             offset: const Offset(0, -6),
             child: _ShelfPlank(isDark: isDark),
@@ -421,7 +499,6 @@ class _ShelfPlankRow extends StatelessWidget {
   }
 }
 
-/// A single wooden shelf plank with thickness and top highlights / shadows.
 class _ShelfPlank extends StatelessWidget {
   const _ShelfPlank({required this.isDark});
   final bool isDark;
@@ -440,27 +517,25 @@ class _ShelfPlank extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: isDark
               ? const [
-                  Color(0xFF4A3728), // top highlight (facing light)
-                  Color(0xFF2E2117), // plank body
-                  Color(0xFF1F160F), // plank shadow side
-                  Color(0xFF140E09), // plank bottom
+                  Color(0xFF4A3728),
+                  Color(0xFF2E2117),
+                  Color(0xFF1F160F),
+                  Color(0xFF140E09),
                 ]
               : const [
-                  Color(0xFF8B6239), // top light
-                  Color(0xFF6B4A27), // main plank
-                  Color(0xFF563A1E), // darker
-                  Color(0xFF3F2A14), // bottom
+                  Color(0xFF8B6239),
+                  Color(0xFF6B4A27),
+                  Color(0xFF563A1E),
+                  Color(0xFF3F2A14),
                 ],
           stops: const [0.0, 0.25, 0.7, 1.0],
         ),
         boxShadow: [
-          // Top lip catch-light
           const BoxShadow(
             color: Colors.black38,
             blurRadius: 6,
-            offset: Offset(0, -3), // shadow cast ON the back wall by books
+            offset: Offset(0, -3),
           ),
-          // Plank drop shadow to next row
           BoxShadow(
             color: Colors.black.withOpacity(0.35),
             blurRadius: 8,
@@ -476,7 +551,6 @@ class _ShelfPlank extends StatelessWidget {
           ),
         ),
       ),
-      // Wood grain lines on plank face
       child: CustomPaint(
         painter: _WoodGrainPainter(isDark: isDark, seed: isDark ? 3 : 7),
       ),
@@ -502,7 +576,6 @@ class _WoodGrainPainter extends CustomPainter {
           .withOpacity(0.2 + rng.nextDouble() * 0.25);
       paint.color = color;
       final path = Path()..moveTo(0, y);
-      // Wavy horizontal grain line
       for (double x = 0; x <= size.width; x += 12) {
         final wave = sin((x / 50) + rng.nextDouble() * 3) * 0.9;
         path.lineTo(x, y + wave);
@@ -517,12 +590,17 @@ class _WoodGrainPainter extends CustomPainter {
 }
 
 // ===========================================================================
-// SKEUOMORPHIC BOOK CARD — with spine, page edges, shadows & reflection
+// BOOK CARD (supports both coverFlat and spineOut modes)
 // ===========================================================================
 class _BookCard extends ConsumerStatefulWidget {
-  const _BookCard({required this.book, required this.isDark});
+  const _BookCard({
+    required this.book,
+    required this.isDark,
+    required this.displayMode,
+  });
   final BookEntity book;
   final bool isDark;
+  final BookDisplayMode displayMode;
 
   @override
   ConsumerState<_BookCard> createState() => _BookCardState();
@@ -551,79 +629,210 @@ class _BookCardState extends ConsumerState<_BookCard> {
             borderRadius: BorderRadius.circular(AppRadius.md),
             onTap: () => context.push('/reader/${widget.book.id}'),
             onLongPress: () => _showMenu(context),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AspectRatio(
-                  aspectRatio: 0.68,
-                  child: _SkeuomorphicBookCover(
-                    book: widget.book,
-                    isDark: widget.isDark,
-                  ),
-                ),
-                // Reflection area (below book, above shelf plank) —
-                // bounded to 30% of cover height.
-                SizedBox(
-                  height: 48,
-                  child: _CoverReflection(
-                    book: widget.book,
-                    isDark: widget.isDark,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                // Book metadata below the reflection
-                Text(
-                  widget.book.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: widget.isDark
-                        ? const Color(0xFFEFE0C7)
-                        : const Color(0xFF3A2614),
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  widget.book.author,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: widget.isDark
-                        ? const Color(0xFFB09878)
-                        : const Color(0xFF6B4A27),
-                  ),
-                ),
-                progressAsync.when(
-                  data: (p) => Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xs),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: p?.progress ?? 0,
-                        minHeight: 3,
-                        backgroundColor: widget.isDark
-                            ? const Color(0xFF3A2A1C)
-                            : const Color(0xFF8B6239).withOpacity(0.35),
-                        valueColor: AlwaysStoppedAnimation(
-                          widget.isDark
-                              ? const Color(0xFFE8B86A)
-                              : const Color(0xFFB35A1F),
-                        ),
-                      ),
-                    ),
-                  ),
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-              ],
-            ),
+            child: widget.displayMode == BookDisplayMode.coverFlat
+                ? _buildCoverFlatMode(progressAsync)
+                : _buildSpineOutMode(progressAsync),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCoverFlatMode(AsyncValue<ReadingProgress?> progressAsync) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              aspectRatio: 0.68,
+              child: _SkeuomorphicBookCover(
+                book: widget.book,
+                isDark: widget.isDark,
+              ),
+            ),
+            SizedBox(
+              height: 48,
+              child: _CoverReflection(
+                book: widget.book,
+                isDark: widget.isDark,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              widget.book.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: widget.isDark
+                    ? const Color(0xFFEFE0C7)
+                    : const Color(0xFF3A2614),
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.book.author,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: widget.isDark
+                    ? const Color(0xFFB09878)
+                    : const Color(0xFF6B4A27),
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          left: 8,
+          bottom: 64,
+          child: progressAsync.when(
+            data: (p) {
+              final pct = ((p?.progress ?? 0) * 100).round();
+              return Text(
+                '$pct%',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: widget.isDark
+                      ? const Color(0xFFD4B188)
+                      : const Color(0xFF5C3E22),
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+        ),
+        Positioned(
+          right: 4,
+          bottom: 60,
+          child: GestureDetector(
+            onTap: () => _showMenu(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6,
+                vertical: 4,
+              ),
+              child: Text(
+                '•••',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: widget.isDark
+                      ? const Color(0xFFB09878).withOpacity(0.85)
+                      : const Color(0xFF6B4A27).withOpacity(0.85),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSpineOutMode(AsyncValue<ReadingProgress?> progressAsync) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              aspectRatio: 0.22,
+              child: _SpineOutBook(
+                book: widget.book,
+                isDark: widget.isDark,
+              ),
+            ),
+            SizedBox(
+              height: 40,
+              child: _SpineReflection(
+                book: widget.book,
+                isDark: widget.isDark,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              widget.book.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: widget.isDark
+                    ? const Color(0xFFEFE0C7)
+                    : const Color(0xFF3A2614),
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.book.author,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: widget.isDark
+                    ? const Color(0xFFB09878)
+                    : const Color(0xFF6B4A27),
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          left: 4,
+          bottom: 54,
+          child: progressAsync.when(
+            data: (p) {
+              final pct = ((p?.progress ?? 0) * 100).round();
+              return Text(
+                '$pct%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: widget.isDark
+                      ? const Color(0xFFD4B188)
+                      : const Color(0xFF5C3E22),
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+        ),
+        Positioned(
+          right: 2,
+          bottom: 50,
+          child: GestureDetector(
+            onTap: () => _showMenu(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 2,
+              ),
+              child: Text(
+                '•••',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: widget.isDark
+                      ? const Color(0xFFB09878).withOpacity(0.85)
+                      : const Color(0xFF6B4A27).withOpacity(0.85),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -648,8 +857,15 @@ class _BookCardState extends ConsumerState<_BookCard> {
                   pinned: !widget.book.isPinned,
                 );
                 ref.invalidate(shelfBooksProvider);
-                // ignore: use_build_context_synchronously
                 Navigator.pop(sheetContext);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('书籍详情'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showBookDetails(context);
               },
             ),
             ListTile(
@@ -665,12 +881,210 @@ class _BookCardState extends ConsumerState<_BookCard> {
                 final repo = ref.read(bookRepositoryProvider);
                 await repo.removeBook(widget.book.id);
                 ref.invalidate(shelfBooksProvider);
-                // ignore: use_build_context_synchronously
                 Navigator.pop(sheetContext);
               },
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showBookDetails(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor =
+        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3A2614);
+    final subColor = isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF221914) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        contentPadding: const EdgeInsets.all(AppSpacing.lg),
+        content: SizedBox(
+          width: 320,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 72,
+                      height: 100,
+                      child: _SkeuomorphicBookCover(
+                        book: widget.book,
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.book.title,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: textColor,
+                              fontWeight: FontWeight.w700,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            widget.book.author,
+                            style: TextStyle(
+                              color: subColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  (isDark ? Colors.white12 : Colors.brown.shade100),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                            child: Text(
+                              widget.book.format.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: subColor,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const Divider(height: 1),
+                const SizedBox(height: AppSpacing.md),
+                _DetailRow(
+                  label: '文件路径',
+                  value: widget.book.filePath,
+                  isDark: isDark,
+                ),
+                _DetailRow(
+                  label: '加入书架',
+                  value: widget.book.addedAt.toString().substring(0, 16),
+                  isDark: isDark,
+                ),
+                _DetailRow(
+                  label: '上次阅读',
+                  value: widget.book.lastReadAt == null
+                      ? '尚未阅读'
+                      : widget.book.lastReadAt.toString().substring(0, 16),
+                  isDark: isDark,
+                ),
+                _DetailRow(
+                  label: '预计字数',
+                  value: widget.book.totalWords == null
+                      ? '—'
+                      : '${widget.book.totalWords}',
+                  isDark: isDark,
+                ),
+                _DetailRow(
+                  label: '置顶',
+                  value: widget.book.isPinned ? '是' : '否',
+                  isDark: isDark,
+                ),
+                if (widget.book.description != null &&
+                    widget.book.description!.trim().isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    '简介',
+                    style: TextStyle(
+                      color: subColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    widget.book.description!.trim(),
+                    maxLines: 6,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    required this.isDark,
+  });
+  final String label;
+  final String value;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor =
+        isDark ? const Color(0xFFEFE0C7) : const Color(0xFF3A2614);
+    final subColor = isDark ? const Color(0xFFB09878) : const Color(0xFF6B4A27);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: subColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -684,11 +1098,9 @@ final progressProvider = FutureProvider.family<ReadingProgress?, String>((
   return repo.fetchProgress(bookId);
 });
 
-/// A book cover rendered with book-binding realism:
-///   - spine (left darker strip with subtle vertical grain)
-///   - page edge (right off-white strip with horizontal page lines)
-///   - multiple shadows (close shadow + far soft shadow)
-///   - inner border highlight (bevel)
+// ===========================================================================
+// COVER FLAT MODE — SKEUOMORPHIC BOOK COVER
+// ===========================================================================
 class _SkeuomorphicBookCover extends StatelessWidget {
   const _SkeuomorphicBookCover({required this.book, required this.isDark});
   final BookEntity book;
@@ -703,13 +1115,34 @@ class _SkeuomorphicBookCover extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Background cover image / fallback
           Positioned.fill(
-            left: 8, // leave room for spine
-            right: 5, // leave room for page edge
-            child: _CoverImageContent(book: book),
+            left: 8,
+            right: 5,
+            child: Stack(
+              children: [
+                Positioned.fill(child: _CoverImageContent(book: book)),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.22),
+                            Colors.white.withOpacity(0.08),
+                            Colors.transparent,
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.25, 0.6, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          // Book spine overlay (left binding)
           Positioned(
             left: 0,
             top: 0,
@@ -717,7 +1150,6 @@ class _SkeuomorphicBookCover extends StatelessWidget {
             width: 9,
             child: _BookSpine(isDark: isDark, book: book),
           ),
-          // Page edge overlay (right)
           Positioned(
             right: 0,
             top: 0,
@@ -725,7 +1157,6 @@ class _SkeuomorphicBookCover extends StatelessWidget {
             width: 6,
             child: _BookPageEdge(isDark: isDark),
           ),
-          // Cover bevel / highlight (inner border)
           Positioned.fill(
             left: 8,
             right: 5,
@@ -765,21 +1196,22 @@ class _SkeuomorphicBookCover extends StatelessWidget {
           right: Radius.circular(AppRadius.sm),
         ),
         boxShadow: [
-          // 1. Far, soft ambient shadow
           BoxShadow(
-            color: Colors.black.withOpacity(0.35),
-            blurRadius: 14,
-            spreadRadius: 1,
-            offset: const Offset(0, 8),
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 24,
+            spreadRadius: -4,
+            offset: const Offset(0, 16),
           ),
-          // 2. Tight contact shadow underneath
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 3,
-            spreadRadius: 0,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.32),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
-          // 3. Inner-right side shade (so book doesn't look flat)
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
         ],
       ),
       child: cover,
@@ -809,7 +1241,6 @@ class _CoverImageContent extends StatelessWidget {
   }
 }
 
-/// Left book-binding spine: darker gradient with a few vertical lines.
 class _BookSpine extends StatelessWidget {
   const _BookSpine({required this.isDark, required this.book});
   final bool isDark;
@@ -817,7 +1248,6 @@ class _BookSpine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Pick a "bookbinding cloth" color based on title hash
     final colorSeed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
         book.author.codeUnits.fold<int>(0, (a, b) => a + b);
     final palette = <Color>[
@@ -829,7 +1259,8 @@ class _BookSpine extends StatelessWidget {
       const Color(0xFF3B1B33),
     ];
     final spineDark = palette[colorSeed % palette.length];
-    final spineLight = Color.lerp(spineDark, Colors.brown.shade200, 0.25)!;
+    final spineLight = Color.lerp(spineDark, Colors.brown.shade200, 0.3)!;
+    final spineHighlight = Color.lerp(spineDark, Colors.white, 0.2)!;
 
     return Container(
       decoration: BoxDecoration(
@@ -838,15 +1269,14 @@ class _BookSpine extends StatelessWidget {
           end: Alignment.centerRight,
           colors: [
             spineDark,
-            spineDark,
-            Color.lerp(spineDark, spineLight, 0.2)!,
-            Color.lerp(spineDark, spineLight, 0.5)!,
+            Color.lerp(spineDark, spineLight, 0.1)!,
+            Color.lerp(spineDark, spineLight, 0.4)!,
+            spineHighlight,
           ],
-          stops: const [0.0, 0.4, 0.75, 1.0],
+          stops: const [0.0, 0.35, 0.75, 1.0],
         ),
         borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
       ),
-      // Add subtle grain lines on the spine
       child: CustomPaint(
         painter: _SpineGrainPainter(spineColor: spineDark, seed: colorSeed),
       ),
@@ -866,22 +1296,20 @@ class _SpineGrainPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5;
 
-    // Vertical grooves along the spine
-    for (int i = 0; i < 3; i++) {
-      final x = 1.5 + (i * (size.width - 3) / 3);
-      paint.color = Colors.black.withOpacity(0.55);
+    for (int i = 0; i < 4; i++) {
+      final x = 1.0 + (i * (size.width - 2) / 4);
+      paint.color = Colors.black.withOpacity(0.5);
       canvas.drawLine(Offset(x, 2), Offset(x, size.height - 2), paint);
-      paint.color = Colors.white.withOpacity(0.06);
+      paint.color = Colors.white.withOpacity(0.08);
       canvas.drawLine(
-        Offset(x + 0.5, 2),
-        Offset(x + 0.5, size.height - 2),
+        Offset(x + 0.4, 2),
+        Offset(x + 0.4, size.height - 2),
         paint,
       );
     }
 
-    // Random tiny speckles
     final speck = Paint()..style = PaintingStyle.fill;
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 14; i++) {
       final x = rng.nextDouble() * size.width;
       final y = rng.nextDouble() * size.height;
       speck.color = (rng.nextBool()
@@ -897,7 +1325,6 @@ class _SpineGrainPainter extends CustomPainter {
       old.seed != seed || old.spineColor != spineColor;
 }
 
-/// Right-side book page edge: off-white with subtle horizontal lines.
 class _BookPageEdge extends StatelessWidget {
   const _BookPageEdge({required this.isDark});
   final bool isDark;
@@ -910,13 +1337,10 @@ class _BookPageEdge extends StatelessWidget {
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
-            // paper transition from cover side
             Color(0xFFF5EEDD),
             Color(0xFFF8F2E0),
             Color(0xFFFBF5E5),
-            // outermost: catches the light brighter
             Color(0xFFFFFAF0),
-            // subtle shadow at the very edge
             Color(0xFFEDE3CB),
           ],
           stops: [0.0, 0.3, 0.65, 0.85, 1.0],
@@ -937,9 +1361,7 @@ class _PageLinePainter extends CustomPainter {
       ..color = const Color(0xFFC9B894).withOpacity(0.5)
       ..strokeWidth = 0.4
       ..style = PaintingStyle.stroke;
-    // Draw horizontal page lines to simulate stacked pages
     for (double y = 3; y < size.height - 2; y += 1.8) {
-      // slight left-to-right fade on lines for realism
       paint.color = Color.lerp(
         const Color(0xFFC9B894).withOpacity(0.35),
         const Color(0xFFC9B894).withOpacity(0.7),
@@ -953,7 +1375,6 @@ class _PageLinePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
-/// A reflection of the book cover rendered beneath it.
 class _CoverReflection extends StatelessWidget {
   const _CoverReflection({required this.book, required this.isDark});
   final BookEntity book;
@@ -961,24 +1382,21 @@ class _CoverReflection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reflection is ~30% of cover height, faded from top to transparent.
     return Opacity(
-      opacity: 0.5,
+      opacity: 0.35,
       child: ShaderMask(
         blendMode: BlendMode.dstIn,
         shaderCallback: (bounds) => const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [Colors.black, Colors.transparent],
-          stops: [0.0, 0.8],
+          stops: [0.0, 0.55],
         ).createShader(bounds),
         child: Transform(
           alignment: Alignment.topCenter,
           transform: Matrix4.identity()
-            ..scale(1.0, -0.4) // flip vertically + squash
+            ..scale(1.0, -0.4)
             ..translate(0.0, -1.25),
-          // A clipped, simplified cover — we only need the cover image shape
-          // + spine/page edge colors for a convincing reflection.
           child: ClipRRect(
             borderRadius: const BorderRadius.horizontal(
               left: Radius.circular(4),
@@ -1025,6 +1443,260 @@ class _CoverReflection extends StatelessWidget {
   }
 }
 
+// ===========================================================================
+// SPINE OUT MODE — VERTICAL SPINE DISPLAY
+// ===========================================================================
+class _SpineOutBook extends StatelessWidget {
+  const _SpineOutBook({required this.book, required this.isDark});
+  final BookEntity book;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorSeed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+        book.author.codeUnits.fold<int>(0, (a, b) => a + b);
+    final spinePalette = <Color>[
+      const Color(0xFF6B3410),
+      const Color(0xFF2C4A6B),
+      const Color(0xFF4A3A6B),
+      const Color(0xFF2E5A3A),
+      const Color(0xFF6B4A20),
+      const Color(0xFF5A2A4A),
+      const Color(0xFF6B2A2A),
+      const Color(0xFF1A4A5A),
+    ];
+    final baseColor = spinePalette[colorSeed % spinePalette.length];
+    final lighter = Color.lerp(baseColor, Colors.white, 0.25)!;
+    final darker = Color.lerp(baseColor, Colors.black, 0.35)!;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 24,
+            spreadRadius: -4,
+            offset: const Offset(0, 16),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.32),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            darker,
+            baseColor,
+            lighter,
+            baseColor,
+            darker,
+          ],
+          stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withOpacity(0.2),
+                        Colors.white.withOpacity(0.06),
+                        Colors.transparent,
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.3, 0.65, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              left: 2,
+              right: 2,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: RotatedBox(
+                        quarterTurns: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            book.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              letterSpacing: 0.5,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black38,
+                                  offset: Offset(0, 1),
+                                  blurRadius: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8, top: 4),
+                    child: Text(
+                      book.author.length > 6
+                          ? '${book.author.substring(0, 6)}.'
+                          : book.author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 2.5,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.black.withOpacity(0.4),
+                      Colors.black.withOpacity(0.08),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 2.5,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                    colors: [
+                      Colors.black.withOpacity(0.35),
+                      Colors.black.withOpacity(0.06),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 6,
+              left: 4,
+              right: 4,
+              child: Container(
+                height: 1,
+                color: Colors.black.withOpacity(0.3),
+              ),
+            ),
+            Positioned(
+              bottom: 6,
+              left: 4,
+              right: 4,
+              child: Container(
+                height: 1,
+                color: Colors.black.withOpacity(0.3),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SpineReflection extends StatelessWidget {
+  const _SpineReflection({required this.book, required this.isDark});
+  final BookEntity book;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorSeed = book.title.codeUnits.fold<int>(0, (a, b) => a + b) +
+        book.author.codeUnits.fold<int>(0, (a, b) => a + b);
+    final spinePalette = <Color>[
+      const Color(0xFF6B3410),
+      const Color(0xFF2C4A6B),
+      const Color(0xFF4A3A6B),
+      const Color(0xFF2E5A3A),
+      const Color(0xFF6B4A20),
+      const Color(0xFF5A2A4A),
+    ];
+    final baseColor = spinePalette[colorSeed % spinePalette.length];
+    final darker = Color.lerp(baseColor, Colors.black, 0.25)!;
+
+    return Opacity(
+      opacity: 0.35,
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.black, Colors.transparent],
+          stops: [0.0, 0.55],
+        ).createShader(bounds),
+        child: Transform(
+          alignment: Alignment.topCenter,
+          transform: Matrix4.identity()
+            ..scale(1.0, -0.45)
+            ..translate(0.0, -1.22),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    darker,
+                    baseColor,
+                    darker,
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FallbackCover extends StatelessWidget {
   const _FallbackCover({required this.book});
   final BookEntity book;
@@ -1059,7 +1731,6 @@ class _FallbackCover extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Subtle leather-sheen highlight
           Positioned(
             top: 0,
             left: 0,
@@ -1075,7 +1746,6 @@ class _FallbackCover extends StatelessWidget {
               ),
             ),
           ),
-          // Title
           Center(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -1098,7 +1768,6 @@ class _FallbackCover extends StatelessWidget {
               ),
             ),
           ),
-          // Subtle embossed frame
           Positioned(
             left: 10,
             top: 10,
@@ -1196,7 +1865,9 @@ class _EmptyShelf extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                isSearch ? '尝试使用其他关键字' : '导入 EPUB / PDF / TXT 文件开启阅读之旅',
+                isSearch
+                    ? '尝试使用其他关键字'
+                    : '导入 EPUB / PDF / TXT 文件开启阅读之旅',
                 style: TextStyle(color: subColor, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
