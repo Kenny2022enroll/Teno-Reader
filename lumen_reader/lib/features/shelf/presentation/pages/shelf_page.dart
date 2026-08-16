@@ -839,6 +839,7 @@ class _BookCardState extends ConsumerState<_BookCard> {
                   pinned: !widget.book.isPinned,
                 );
                 ref.invalidate(shelfBooksProvider);
+                if (!sheetContext.mounted) return;
                 Navigator.pop(sheetContext);
               },
             ),
@@ -863,6 +864,7 @@ class _BookCardState extends ConsumerState<_BookCard> {
                 final repo = ref.read(bookRepositoryProvider);
                 await repo.removeBook(widget.book.id);
                 ref.invalidate(shelfBooksProvider);
+                if (!sheetContext.mounted) return;
                 Navigator.pop(sheetContext);
               },
             ),

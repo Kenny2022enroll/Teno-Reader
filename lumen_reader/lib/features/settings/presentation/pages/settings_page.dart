@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/webdav/webdav_models.dart';
 import '../../../../core/webdav/webdav_service.dart';
@@ -27,7 +26,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _obscurePassword = true;
   bool _webdavExpanded = false;
   bool _autoSync = true;
-  bool _loadingSettings = true;
 
   @override
   void initState() {
@@ -55,7 +53,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _autoSync = s.autoSync;
     }
     if (mounted) {
-      setState(() => _loadingSettings = false);
+      setState(() {});
     }
   }
 

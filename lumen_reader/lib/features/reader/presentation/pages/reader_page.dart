@@ -401,7 +401,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         await _autoSaveProgress(force: true);
-        if (mounted) context.pop();
+        if (mounted) this.context.pop();
       },
       child: Scaffold(
         backgroundColor: _resolveBgColor(
