@@ -30,7 +30,6 @@ final readerBookProvider = FutureProvider.family<BookEntity?, String>((
   return repo.fetchBook(id);
 });
 
-/// Decode a TXT file in a background isolate, handling BOM and encoding.
 String _decodeTxtFile(String path) {
   final bytes = File(path).readAsBytesSync();
   if (bytes.isEmpty) return '';
@@ -134,6 +133,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   ReadingProgress? _savedProgress;
   bool _needsPositionRestore = false;
 
+  Map<String, String> _epubImagePaths = {};
+
   @override
   void initState() {
     super.initState();
@@ -157,12 +158,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     _tts.setCompletionHandler(_onTtsComplete);
   }
 
-  /// Try to figure out chapter index from saved progress.
-  /// Prefers encoding "index:title" in chapterId, falls back to title match,
-  /// finally uses progress percentage against chapter count.
   int _resolveChapterIndex(ReadingProgress saved, List<String> chapters) {
     if (chapters.isEmpty) return 0;
-    // 1. Encoded index in chapterId: "N:Title..."
     final chapterId = saved.chapterId;
     final colonIdx = chapterId.indexOf(':');
     if (colonIdx > 0) {
@@ -171,12 +168,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         return n;
       }
     }
-    // 2. Exact title match
     final byTitle = chapters.indexWhere(
       (c) => c == chapterId || c.trim() == chapterId.trim(),
     );
     if (byTitle >= 0) return byTitle;
-    // 3. Progress-based estimate
     final estimated = (saved.progress * chapters.length).floor();
     return estimated.clamp(0, chapters.length - 1);
   }
@@ -308,9 +303,22 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   Future<void> _loadEpubChapters(BookEntity book) async {
-    final chapters = await EpubParser().extractChapters(book.filePath);
-    _chapters = chapters.map((c) => c.title).toList();
-    _chapterContents = chapters.map((c) => c.content).toList();
+    try {
+      final result =
+          await EpubParser().extractChaptersWithImages(book.filePath);
+      _chapters = result.chapters.map((c) => c.title).toList();
+      _chapterContents = result.chapters.map((c) => c.content).toList();
+      final imgMap = <String, String>{};
+      for (final img in result.images) {
+        imgMap[img.archivePath] = img.extractedPath;
+      }
+      _epubImagePaths = imgMap;
+    } catch (_) {
+      final chapters = await EpubParser().extractChapters(book.filePath);
+      _chapters = chapters.map((c) => c.title).toList();
+      _chapterContents = chapters.map((c) => c.content).toList();
+      _epubImagePaths = {};
+    }
     if (_chapters.isEmpty) {
       _chapters = ['未命名章节'];
       _chapterContents = ['无法解析 EPUB 内容'];
@@ -387,28 +395,36 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final bookAsync = ref.watch(readerBookProvider(widget.bookId));
     final settingsAsync = ref.watch(readerSettingsProvider);
 
-    return Scaffold(
-      backgroundColor: _resolveBgColor(
-        settingsAsync.valueOrNull,
-        Theme.of(context),
-      ),
-      body: bookAsync.when(
-        data: (book) {
-          if (book == null) return const Center(child: Text('书籍未找到'));
-          if (_isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return Stack(
-            children: [
-              _buildReaderSurface(book, settingsAsync.valueOrNull),
-              _buildTopBar(book, settingsAsync.valueOrNull),
-              _buildBottomBar(book, settingsAsync.valueOrNull),
-              if (_isPlayingTts) _buildTtsOverlay(book),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败: $e')),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _autoSaveProgress(force: true);
+        if (mounted) context.pop();
+      },
+      child: Scaffold(
+        backgroundColor: _resolveBgColor(
+          settingsAsync.valueOrNull,
+          Theme.of(context),
+        ),
+        body: bookAsync.when(
+          data: (book) {
+            if (book == null) return const Center(child: Text('书籍未找到'));
+            if (_isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return Stack(
+              children: [
+                _buildReaderSurface(book, settingsAsync.valueOrNull),
+                _buildTopBar(book, settingsAsync.valueOrNull),
+                _buildBottomBar(book, settingsAsync.valueOrNull),
+                if (_isPlayingTts) _buildTtsOverlay(book),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('加载失败: $e')),
+        ),
       ),
     );
   }
@@ -455,20 +471,95 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         },
       );
     }
-    return SingleChildScrollView(
+    final padding = EdgeInsets.symmetric(
+      horizontal: AppSpacing.xl,
+      vertical: MediaQuery.of(context).padding.top + AppSpacing.md,
+    );
+    return ListView.custom(
       controller: _scrollCtrl,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: MediaQuery.of(context).padding.top + AppSpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      padding: padding,
+      childrenDelegate: SliverChildListDelegate(
+        [
           _buildChapterBody(book, _currentChapter, settings),
           _buildChapterNav(book, settings),
         ],
+        addAutomaticKeepAlives: false,
       ),
     );
+  }
+
+  List<InlineSpan> _parseContentTokens(
+    String content,
+    Color textColor,
+    SettingsPayload? s,
+  ) {
+    final spans = <InlineSpan>[];
+    final pattern = RegExp(r'\[IMAGE:([^\]]+)\]');
+    final matches = pattern.allMatches(content);
+    int cursor = 0;
+    for (final m in matches) {
+      if (m.start > cursor) {
+        final text = content.substring(cursor, m.start);
+        spans.add(
+          TextSpan(
+            text: text,
+            style: TextStyle(
+              fontSize: s?.fontSize ?? 17,
+              height: s?.lineHeight ?? 1.6,
+              color: textColor,
+              fontFamily: s?.fontFamily,
+            ),
+          ),
+        );
+      }
+      final archivePath = m.group(1) ?? '';
+      final extractedPath = _epubImagePaths[archivePath];
+      if (extractedPath != null && extractedPath.isNotEmpty) {
+        final file = File(extractedPath);
+        if (file.existsSync()) {
+          spans.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    file,
+                    fit: BoxFit.fitWidth,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
+          );
+          cursor = m.end;
+          continue;
+        }
+      }
+      spans.add(
+        WidgetSpan(
+          child: Container(),
+        ),
+      );
+      cursor = m.end;
+    }
+    if (cursor < content.length) {
+      final text = content.substring(cursor);
+      spans.add(
+        TextSpan(
+          text: text,
+          style: TextStyle(
+            fontSize: s?.fontSize ?? 17,
+            height: s?.lineHeight ?? 1.6,
+            color: textColor,
+            fontFamily: s?.fontFamily,
+          ),
+        ),
+      );
+    }
+    return spans;
   }
 
   Widget _buildChapterBody(
@@ -479,38 +570,40 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     final theme = Theme.of(context);
     final textColor = _resolveTextColor(s, theme);
 
-    return SelectionArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '第 ${chapterIndex + 1} 章 · ${_chapters[chapterIndex]}',
-            style: TextStyle(
-              fontSize: (s?.fontSize ?? 17) + 4,
-              fontWeight: FontWeight.w600,
-              color: textColor,
+    final content = chapterIndex < _chapterContents.length
+        ? _chapterContents[chapterIndex]
+        : '无内容';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12, top: 16),
+          child: SelectionArea(
+            child: Text(
+              '第 ${chapterIndex + 1} 章 · ${_chapters[chapterIndex]}',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ).copyWith(color: textColor),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          GestureDetector(
-            onLongPressStart: (details) {
-              _showHighlightMenu(book, chapterIndex, details.globalPosition);
-            },
-            child: Text(
-              chapterIndex < _chapterContents.length
-                  ? _chapterContents[chapterIndex]
-                  : '无内容',
-              style: TextStyle(
-                fontSize: s?.fontSize ?? 17,
-                height: s?.lineHeight ?? 1.6,
-                color: textColor,
-                fontFamily: s?.fontFamily,
+        ),
+        GestureDetector(
+          onLongPressStart: (details) {
+            _showHighlightMenu(book, chapterIndex, details.globalPosition);
+          },
+          child: SelectionArea(
+            child: RichText(
+              textWidthBasis: TextWidthBasis.longestLine,
+              text: TextSpan(
+                children: _parseContentTokens(content, textColor, s),
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.xxxl),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSpacing.xxxl),
+      ],
     );
   }
 

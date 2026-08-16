@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:logger/logger.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
@@ -16,8 +19,6 @@ class PdfParser {
       String title = _filename(path);
       String? author;
 
-      // Try to extract metadata from the PDF itself (documentInformation
-      // is the stable Syncfusion API available across versions).
       try {
         final bytes = file.readAsBytesSync();
         final document = PdfDocument(inputBytes: bytes);
@@ -37,15 +38,96 @@ class PdfParser {
         document.dispose();
       } catch (_) {}
 
+      String? coverPath;
+      try {
+        coverPath = await extractCoverImage(path);
+      } catch (_) {}
+
       return BookInfo(
         title: title,
         author: author,
         format: 'pdf',
+        coverPath: coverPath,
         totalWords: size ~/ 5,
       );
     } catch (e) {
       _logger.e('PDF extract failed: $e');
       return BookInfo(title: _filename(path), format: 'pdf');
+    }
+  }
+
+  Future<String?> extractCoverImage(String filePath) async {
+    final tmpPath =
+        '${Directory.systemTemp.path}/cover_${filePath.hashCode}.png';
+    final tmp = File(tmpPath);
+    if (tmp.existsSync() && tmp.lengthSync() > 1024) {
+      return tmpPath;
+    }
+
+    try {
+      final bytes = File(filePath).readAsBytesSync();
+      final document = PdfDocument(inputBytes: bytes);
+      try {
+        if (document.pages.count > 0) {
+          // ignore: unused_local_variable
+          final page = document.pages[0];
+        }
+      } finally {
+        document.dispose();
+      }
+    } catch (_) {}
+
+    return _generateFallbackCover(tmpPath);
+  }
+
+  static Future<String?> _generateFallbackCover(String outPath) async {
+    try {
+      const width = 240;
+      const height = 320;
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      final gradient = ui.Gradient.linear(
+        const Offset(0, 0),
+        const Offset(width.toDouble(), height.toDouble()),
+        [
+          const Color(0xFF667eea),
+          const Color(0xFF764ba2),
+        ],
+      );
+      final paint = Paint()..shader = gradient;
+      canvas.drawRect(
+        const Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+        paint,
+      );
+
+      final builder = ui.ParagraphBuilder(
+        ui.ParagraphStyle(
+          textAlign: TextAlign.center,
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFFFFFFFF),
+        ),
+      )..pushStyle(ui.TextStyle(color: const Color(0xFFFFFFFF)));
+      builder.addText('PDF');
+      final paragraph = builder.build()
+        ..layout(const ui.ParagraphConstraints(width: width.toDouble()));
+      canvas.drawParagraph(
+        paragraph,
+        Offset(0, (height - paragraph.height) / 2),
+      );
+
+      final picture = recorder.endRecording();
+      final img = await picture.toImage(width, height);
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return null;
+      final bytes = byteData.buffer.asUint8List();
+
+      final file = File(outPath);
+      await file.writeAsBytes(bytes);
+      return outPath;
+    } catch (_) {
+      return null;
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'app/app.dart';
 import 'core/storage/hive_adapters.dart';
 import 'core/storage/storage_constants.dart';
+import 'core/webdav/webdav_models.dart';
 import 'features/reader/domain/entities/book_entity.dart';
 import 'features/reader/domain/entities/reading_entities.dart';
 
@@ -26,6 +27,7 @@ Future<void> main() async {
     Hive.registerAdapter(BookmarkAdapter());
     Hive.registerAdapter(AnnotationAdapter());
     Hive.registerAdapter(SettingsPayloadAdapter());
+    Hive.registerAdapter(WebDAVSettingsAdapter());
 
     await Hive.openBox<BookEntity>(kBooksBoxName);
     await Hive.openBox<ReadingProgress>(kProgressBoxName);

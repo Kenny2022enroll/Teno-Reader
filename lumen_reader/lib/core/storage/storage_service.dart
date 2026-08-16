@@ -4,6 +4,7 @@ import 'package:logger/logger.dart';
 
 import '../../features/reader/domain/entities/book_entity.dart';
 import '../../features/reader/domain/entities/reading_entities.dart';
+import '../webdav/webdav_models.dart';
 import 'storage_constants.dart';
 
 /// Service layer abstraction for local persistence.
@@ -70,5 +71,20 @@ class StorageService {
 
   Future<void> setLastSync(DateTime dt) async {
     await _secure.write(key: kLastSyncKey, value: dt.toIso8601String());
+  }
+
+  // MARK: - WebDAV Settings
+
+  static const String kWebDAVSettingsKey = 'webdav.settings';
+
+  Future<void> saveWebDAVSettings(WebDAVSettings s) async {
+    final box = Hive.box(kSettingsBoxName);
+    await box.put(kWebDAVSettingsKey, s);
+    _logger.d('Saved WebDAV settings');
+  }
+
+  Future<WebDAVSettings?> loadWebDAVSettings() async {
+    final box = Hive.box(kSettingsBoxName);
+    return box.get(kWebDAVSettingsKey) as WebDAVSettings?;
   }
 }

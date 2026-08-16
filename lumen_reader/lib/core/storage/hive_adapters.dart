@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../features/reader/domain/entities/book_entity.dart';
 import '../../features/reader/domain/entities/reading_entities.dart';
+import '../webdav/webdav_models.dart';
 
 class BookAdapter extends TypeAdapter<BookEntity> {
   @override
@@ -192,5 +193,28 @@ class SettingsPayloadAdapter extends TypeAdapter<SettingsPayload> {
     w.writeBool(obj.syncEnabled);
     w.writeBool(obj.reducedMotion);
     w.writeBool(obj.largeText);
+  }
+}
+
+class WebDAVSettingsAdapter extends TypeAdapter<WebDAVSettings> {
+  @override
+  final int typeId = 20;
+
+  @override
+  WebDAVSettings read(BinaryReader r) => WebDAVSettings(
+        url: r.readString(),
+        username: r.readString(),
+        password: r.readString(),
+        rootFolder: r.readString(),
+        autoSync: r.readBool(),
+      );
+
+  @override
+  void write(BinaryWriter w, WebDAVSettings obj) {
+    w.writeString(obj.url);
+    w.writeString(obj.username);
+    w.writeString(obj.password);
+    w.writeString(obj.rootFolder);
+    w.writeBool(obj.autoSync);
   }
 }
