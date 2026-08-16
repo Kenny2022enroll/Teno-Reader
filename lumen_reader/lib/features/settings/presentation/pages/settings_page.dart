@@ -301,14 +301,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               _Section(
                 title: 'WebDAV 同步',
                 children: [
-                  SwitchListTile.adaptive(
-                    value: _autoSync,
-                    onChanged: (v) {
-                      setState(() => _autoSync = v);
-                    },
-                    secondary: const Icon(Icons.folder_special_outlined),
+                  ListTile(
+                    leading: const Icon(Icons.folder_special_outlined),
                     title: const Text('WebDAV 同步'),
-                    subtitle: const Text('通过 WebDAV 备份进度与书签'),
+                    subtitle: const Text('通过 WebDAV 备份进度、笔记、书签'),
                     isThreeLine: true,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
