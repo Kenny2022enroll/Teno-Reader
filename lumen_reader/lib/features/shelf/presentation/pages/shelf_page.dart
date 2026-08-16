@@ -953,8 +953,9 @@ class _BookCardState extends ConsumerState<_BookCard> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color:
-                                  (isDark ? Colors.white12 : Colors.brown.shade100),
+                              color: isDark
+                                  ? Colors.white12
+                                  : Colors.brown.shade100,
                               borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
                             child: Text(
