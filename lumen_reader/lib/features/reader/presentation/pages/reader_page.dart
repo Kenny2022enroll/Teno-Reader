@@ -368,8 +368,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         s?.pageTurnStyle == 'curl' || s?.pageTurnStyle == 'slide';
     if (usePageView) {
       // For PageView mode, compute an aggregate offset: chapter * 10000 + %
-      scrollOffset =
-          _currentChapter * 10000 +
+      scrollOffset = _currentChapter * 10000 +
           (_currentProgress * 10000).round().clamp(0, 9999);
     } else if (_scrollCtrl.hasClients) {
       scrollOffset = _scrollCtrl.offset.toInt();
@@ -385,7 +384,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           scrollOffset: scrollOffset,
           totalWordsRead:
               (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0) +
-              _currentChapter * 500,
+                  _currentChapter * 500,
           updatedAt: now,
         ),
       );

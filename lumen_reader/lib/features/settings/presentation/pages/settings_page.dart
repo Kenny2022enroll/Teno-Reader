@@ -60,14 +60,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   WebDAVSettings _currentSettings() => WebDAVSettings(
-    url: _urlController.text.trim(),
-    username: _usernameController.text.trim(),
-    password: _passwordController.text,
-    rootFolder: _rootFolderController.text.trim().isEmpty
-        ? '/LumenReader'
-        : _rootFolderController.text.trim(),
-    autoSync: _autoSync,
-  );
+        url: _urlController.text.trim(),
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+        rootFolder: _rootFolderController.text.trim().isEmpty
+            ? '/LumenReader'
+            : _rootFolderController.text.trim(),
+        autoSync: _autoSync,
+      );
 
   void _showSnack(String message, {bool success = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -192,8 +192,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     subtitle: s.pageTurnStyle == 'slide'
                         ? '滑动'
                         : s.pageTurnStyle == 'curl'
-                        ? '翻页'
-                        : '无',
+                            ? '翻页'
+                            : '无',
                     trailing: DropdownButton<String>(
                       value: s.pageTurnStyle,
                       items: const [
@@ -350,7 +350,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         controller: _urlController,
                         decoration: const InputDecoration(
                           labelText: '服务器 URL',
-                          hintText: 'https://dav.example.com/remote.php/dav/files/user',
+                          hintText:
+                              'https://dav.example.com/remote.php/dav/files/user',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.link_outlined),
                         ),

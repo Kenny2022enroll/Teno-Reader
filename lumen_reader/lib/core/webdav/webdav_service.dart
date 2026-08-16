@@ -16,19 +16,19 @@ String _join(String a, String b) {
 
 class WebDAVService {
   WebDAVService(Dio dio, WebDAVSettings settings)
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: _normalizeBaseUrl(settings.url),
-          headers: {
-            'Authorization':
-                'Basic ${base64.encode(utf8.encode('${settings.username}:${settings.password}'))}',
-          },
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 30),
-          sendTimeout: const Duration(seconds: 60),
+      : _dio = Dio(
+          BaseOptions(
+            baseUrl: _normalizeBaseUrl(settings.url),
+            headers: {
+              'Authorization':
+                  'Basic ${base64.encode(utf8.encode('${settings.username}:${settings.password}'))}',
+            },
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 30),
+            sendTimeout: const Duration(seconds: 60),
+          ),
         ),
-      ),
-      _settings = settings;
+        _settings = settings;
 
   final Dio _dio;
   final WebDAVSettings _settings;
