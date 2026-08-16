@@ -90,10 +90,7 @@ class PdfParser {
       final gradient = ui.Gradient.linear(
         const Offset(0, 0),
         const Offset(width.toDouble(), height.toDouble()),
-        [
-          const Color(0xFF667eea),
-          const Color(0xFF764ba2),
-        ],
+        [const Color(0xFF667eea), const Color(0xFF764ba2)],
       );
       final paint = Paint()..shader = gradient;
       canvas.drawRect(

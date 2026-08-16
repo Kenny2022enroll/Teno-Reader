@@ -304,8 +304,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Future<void> _loadEpubChapters(BookEntity book) async {
     try {
-      final result =
-          await EpubParser().extractChaptersWithImages(book.filePath);
+      final result = await EpubParser().extractChaptersWithImages(
+        book.filePath,
+      );
       _chapters = result.chapters.map((c) => c.title).toList();
       _chapterContents = result.chapters.map((c) => c.content).toList();
       final imgMap = <String, String>{};
@@ -367,7 +368,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         s?.pageTurnStyle == 'curl' || s?.pageTurnStyle == 'slide';
     if (usePageView) {
       // For PageView mode, compute an aggregate offset: chapter * 10000 + %
-      scrollOffset = _currentChapter * 10000 +
+      scrollOffset =
+          _currentChapter * 10000 +
           (_currentProgress * 10000).round().clamp(0, 9999);
     } else if (_scrollCtrl.hasClients) {
       scrollOffset = _scrollCtrl.offset.toInt();
@@ -383,7 +385,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           scrollOffset: scrollOffset,
           totalWordsRead:
               (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0) +
-                  _currentChapter * 500,
+              _currentChapter * 500,
           updatedAt: now,
         ),
       );
@@ -478,13 +480,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     return ListView.custom(
       controller: _scrollCtrl,
       padding: padding,
-      childrenDelegate: SliverChildListDelegate(
-        [
-          _buildChapterBody(book, _currentChapter, settings),
-          _buildChapterNav(book, settings),
-        ],
-        addAutomaticKeepAlives: false,
-      ),
+      childrenDelegate: SliverChildListDelegate([
+        _buildChapterBody(book, _currentChapter, settings),
+        _buildChapterNav(book, settings),
+      ], addAutomaticKeepAlives: false),
     );
   }
 
@@ -538,11 +537,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           continue;
         }
       }
-      spans.add(
-        WidgetSpan(
-          child: Container(),
-        ),
-      );
+      spans.add(WidgetSpan(child: Container()));
       cursor = m.end;
     }
     if (cursor < content.length) {

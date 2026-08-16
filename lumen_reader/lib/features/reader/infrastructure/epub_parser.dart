@@ -63,12 +63,16 @@ class EpubParser {
     return '${Directory.systemTemp.path}/book_${path.hashCode}_cover.$ext';
   }
 
-  static String? _writeCoverBytes(String path, dynamic fileContent, String ext) {
+  static String? _writeCoverBytes(
+    String path,
+    dynamic fileContent,
+    String ext,
+  ) {
     try {
       final tmpExt =
           (ext == 'png' || ext == 'jpeg' || ext == 'webp' || ext == 'gif')
-              ? ext
-              : 'jpg';
+          ? ext
+          : 'jpg';
       final tmp = File(_coverTmpPath(path, tmpExt));
       if (tmp.existsSync() && tmp.lengthSync() > 1024) {
         return tmp.path;
@@ -91,8 +95,10 @@ class EpubParser {
     final name = file.name.toLowerCase();
     final mediaType = (file.compressType == null ? '' : '').toLowerCase();
     if (mediaType.startsWith('image/')) return true;
-    return RegExp(r'\.(jpg|jpeg|png|webp|gif)$', caseSensitive: false)
-        .hasMatch(name);
+    return RegExp(
+      r'\.(jpg|jpeg|png|webp|gif)$',
+      caseSensitive: false,
+    ).hasMatch(name);
   }
 
   Future<BookInfo> extract(String path) async {
@@ -152,8 +158,10 @@ class EpubParser {
       for (final file in archive.files) {
         final name = file.name.toLowerCase();
         final baseName = name.split('/').last;
-        if (RegExp(r'^cover\.(jpg|jpeg|png|webp)$', caseSensitive: false)
-            .hasMatch(baseName)) {
+        if (RegExp(
+          r'^cover\.(jpg|jpeg|png|webp)$',
+          caseSensitive: false,
+        ).hasMatch(baseName)) {
           final ext = baseName.split('.').last;
           final result = _writeCoverBytes(path, file.content, ext);
           if (result != null) {
@@ -190,9 +198,11 @@ class EpubParser {
         imageFiles.sort((a, b) => b.size.compareTo(a.size));
         final largest = imageFiles.first;
         final name = largest.name.toLowerCase();
-        final ext = RegExp(r'\.(jpg|jpeg|png|webp|gif)$', caseSensitive: false)
-                .firstMatch(name)
-                ?.group(1) ??
+        final ext =
+            RegExp(
+              r'\.(jpg|jpeg|png|webp|gif)$',
+              caseSensitive: false,
+            ).firstMatch(name)?.group(1) ??
             'jpg';
         coverPath = _writeCoverBytes(path, largest.content, ext);
       }
@@ -268,47 +278,51 @@ class EpubParser {
           ? filePath.substring(0, filePath.lastIndexOf('/') + 1)
           : '';
 
-      final chapterResult =
-          _parseHtmlChapterWithImages(html, baseDir, archive, (imgSrc) {
-        final archivePath = _resolveHrefForImage(baseDir, imgSrc, archive);
-        if (archivePath == null) return null;
-        if (extractedImages.containsKey(archivePath)) {
-          return archivePath;
-        }
-        final imgFile = archive.findFile(archivePath);
-        if (imgFile == null) return null;
-
-        final safeName = archivePath
-            .replaceAll('/', '_')
-            .replaceAll('\\', '_')
-            .replaceAll(' ', '_');
-        final ext = safeName.contains('.')
-            ? safeName.split('.').last.toLowerCase()
-            : 'png';
-        final validExt = RegExp(r'^(jpg|jpeg|png|webp|gif)$').hasMatch(ext)
-            ? ext
-            : 'png';
-        final outPath = '$tmpDir/${bookTag}_img_$safeName';
-        try {
-          final f = File(outPath);
-          if (!f.existsSync() || f.lengthSync() <= 0) {
-            f.writeAsBytesSync(
-              imgFile.content is Uint8List
-                  ? imgFile.content as Uint8List
-                  : Uint8List.fromList(imgFile.content as List<int>),
-            );
+      final chapterResult = _parseHtmlChapterWithImages(
+        html,
+        baseDir,
+        archive,
+        (imgSrc) {
+          final archivePath = _resolveHrefForImage(baseDir, imgSrc, archive);
+          if (archivePath == null) return null;
+          if (extractedImages.containsKey(archivePath)) {
+            return archivePath;
           }
-          extractedImages[archivePath] = EpubImage(
-            archivePath: archivePath,
-            extractedPath: outPath,
-            width: 0,
-            height: 0,
-          );
-          return archivePath;
-        } catch (_) {
-          return null;
-        }
-      });
+          final imgFile = archive.findFile(archivePath);
+          if (imgFile == null) return null;
+
+          final safeName = archivePath
+              .replaceAll('/', '_')
+              .replaceAll('\\', '_')
+              .replaceAll(' ', '_');
+          final ext = safeName.contains('.')
+              ? safeName.split('.').last.toLowerCase()
+              : 'png';
+          final validExt = RegExp(r'^(jpg|jpeg|png|webp|gif)$').hasMatch(ext)
+              ? ext
+              : 'png';
+          final outPath = '$tmpDir/${bookTag}_img_$safeName';
+          try {
+            final f = File(outPath);
+            if (!f.existsSync() || f.lengthSync() <= 0) {
+              f.writeAsBytesSync(
+                imgFile.content is Uint8List
+                    ? imgFile.content as Uint8List
+                    : Uint8List.fromList(imgFile.content as List<int>),
+              );
+            }
+            extractedImages[archivePath] = EpubImage(
+              archivePath: archivePath,
+              extractedPath: outPath,
+              width: 0,
+              height: 0,
+            );
+            return archivePath;
+          } catch (_) {
+            return null;
+          }
+        },
+      );
 
       chapters.add(chapterResult);
     }
@@ -320,7 +334,10 @@ class EpubParser {
   }
 
   static String? _resolveHrefForImage(
-      String baseDir, String imgSrc, Archive archive) {
+    String baseDir,
+    String imgSrc,
+    Archive archive,
+  ) {
     if (imgSrc.isEmpty) return null;
     final src = imgSrc.trim();
     if (src.startsWith('http://') || src.startsWith('https://')) return null;
@@ -334,15 +351,16 @@ class EpubParser {
 
     if (clean.startsWith('/')) {
       clean = clean.substring(1);
-      final f = archive.findFile(clean) ??
-          archive.findFile(Uri.decodeFull(clean));
+      final f =
+          archive.findFile(clean) ?? archive.findFile(Uri.decodeFull(clean));
       if (f != null) return clean;
       return null;
     }
 
     final combined = '$baseDir$clean';
     var normalized = _normalizePath(combined);
-    var f = archive.findFile(normalized) ??
+    var f =
+        archive.findFile(normalized) ??
         archive.findFile(Uri.decodeFull(normalized));
     if (f != null) return normalized;
 
@@ -390,8 +408,7 @@ class EpubParser {
       }
       final bodyEls = doc.findAllElements('body');
       if (bodyEls.isNotEmpty) {
-        content =
-            _extractTextWithImages(bodyEls.first, onImage).trim();
+        content = _extractTextWithImages(bodyEls.first, onImage).trim();
         usedXml = true;
       }
     } catch (_) {}
@@ -451,7 +468,9 @@ class EpubParser {
   };
 
   static String _extractTextWithImages(
-      XmlNode node, String? Function(String imgSrc) onImage) {
+    XmlNode node,
+    String? Function(String imgSrc) onImage,
+  ) {
     final buffer = StringBuffer();
     for (final child in node.children) {
       if (child is XmlText) {
@@ -478,7 +497,9 @@ class EpubParser {
   }
 
   static String _stripHtmlTagsWithImages(
-      String input, String? Function(String imgSrc) onImage) {
+    String input,
+    String? Function(String imgSrc) onImage,
+  ) {
     final imgRegex = RegExp(
       r'''<img\s[^>]*src\s*=\s*["']([^"']+)["'][^>]*>''',
       caseSensitive: false,
@@ -499,14 +520,11 @@ class EpubParser {
       ),
       (_) => '\n',
     );
-    s = s.replaceAllMapped(
-      RegExp(r'<[^>]+>'),
-      (m) {
-        final t = m.group(0)!;
-        if (t.contains('[IMAGE:')) return t;
-        return '';
-      },
-    );
+    s = s.replaceAllMapped(RegExp(r'<[^>]+>'), (m) {
+      final t = m.group(0)!;
+      if (t.contains('[IMAGE:')) return t;
+      return '';
+    });
     s = s.replaceAllMapped(RegExp(r'<[^>]+>'), (_) => '');
     s = s
         .replaceAllMapped(RegExp(r'&nbsp;', caseSensitive: false), (_) => ' ')
