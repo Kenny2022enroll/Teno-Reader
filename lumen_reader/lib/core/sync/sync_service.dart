@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:encrypt/encrypt.dart';
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 
@@ -38,6 +41,16 @@ class SyncService {
   bool _enabled = false;
 
   bool get isEnabled => _enabled;
+
+  /// Test-only entry point to install a precomputed master key without
+  /// exercising [FlutterSecureStorage] via [enable]. Lets unit tests
+  /// verify the encrypt/decrypt round-trip directly.
+  @visibleForTesting
+  void setMasterKeyForTesting(Key key) {
+    _masterKey = key;
+    _installId = 'test-install';
+    _enabled = true;
+  }
 
   Future<void> enable() async {
     _installId ??= await _storage.readSecret(kInstallId) ?? _uuid.v4();
@@ -101,12 +114,20 @@ class SyncService {
     }
   }
 
+  @visibleForTesting
+  Map<String, dynamic> encryptPayload(Map<String, dynamic> payload) =>
+      _encrypt(payload);
+
+  @visibleForTesting
+  Map<String, dynamic>? decryptPayload(dynamic data) => _decrypt(data);
+
   Map<String, dynamic> _encrypt(Map<String, dynamic> payload) {
     if (_masterKey == null) return payload;
     final iv = IV.fromSecureRandom(16);
     final encrypter = Encrypter(AES(_masterKey!, mode: AESMode.cbc));
-    final jsonStr =
-        payload.toString(); // placeholder; real impl uses jsonEncode
+    // PKCS7 padding (encrypt package default) requires the plaintext to be
+    // a multiple of 16 bytes; UTF-8 encoded JSON satisfies that via padding.
+    final jsonStr = jsonEncode(payload);
     final encrypted = encrypter.encrypt(jsonStr, iv: iv);
     return {
       'v': 1,
@@ -124,7 +145,9 @@ class SyncService {
       final cipher = Encrypted.fromBase64(data['cipher'] as String);
       final encrypter = Encrypter(AES(_masterKey!, mode: AESMode.cbc));
       final plain = encrypter.decrypt(cipher, iv: iv);
-      return {'plain': plain};
+      final decoded = jsonDecode(plain);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return null;
     } catch (e) {
       _logger.w('Decrypt error: $e');
       return null;

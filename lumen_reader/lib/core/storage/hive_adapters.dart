@@ -18,7 +18,7 @@ class BookAdapter extends TypeAdapter<BookEntity> {
       description: reader.readBool() ? reader.readString() : null,
       filePath: reader.readString(),
       format: reader.readString(),
-      totalWords: reader.readInt(),
+      totalWords: reader.readBool() ? reader.readInt() : null,
       addedAt: DateTime.fromMillisecondsSinceEpoch(reader.readInt()),
       lastReadAt: reader.readBool()
           ? DateTime.fromMillisecondsSinceEpoch(reader.readInt())
@@ -38,7 +38,8 @@ class BookAdapter extends TypeAdapter<BookEntity> {
     if (obj.description != null) writer.writeString(obj.description!);
     writer.writeString(obj.filePath);
     writer.writeString(obj.format);
-    writer.writeInt(obj.totalWords ?? 0);
+    writer.writeBool(obj.totalWords != null);
+    if (obj.totalWords != null) writer.writeInt(obj.totalWords!);
     writer.writeInt(obj.addedAt.millisecondsSinceEpoch);
     writer.writeBool(obj.lastReadAt != null);
     if (obj.lastReadAt != null) {

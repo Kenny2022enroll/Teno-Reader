@@ -361,12 +361,21 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
     if (result == null || result.files.isEmpty) return;
 
     final repo = ref.read(bookRepositoryProvider);
+    final importStart = DateTime.now();
     int added = 0;
+    int skipped = 0;
     for (final f in result.files) {
       if (f.path != null) {
         try {
-          await repo.addBookFromFile(filePath: f.path!);
-          added++;
+          final book = await repo.addBookFromFile(filePath: f.path!);
+          // addBookFromFile de-dupes by file path and returns the existing
+          // record for a duplicate. Treat "addedAt within a few seconds of
+          // importStart" as a freshly created record.
+          if (book.addedAt.isAfter(importStart.subtract(const Duration(seconds: 1)))) {
+            added++;
+          } else {
+            skipped++;
+          }
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context)
@@ -375,9 +384,20 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
         }
       }
     }
-    if (added > 0 && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('成功导入 $added 本书')));
+    if (mounted) {
+      String msg;
+      if (added == 0 && skipped > 0) {
+        msg = '所选书籍均已在书架中';
+      } else if (skipped > 0) {
+        msg = '成功导入 $added 本（$skipped 本已存在）';
+      } else if (added > 0) {
+        msg = '成功导入 $added 本书';
+      } else {
+        msg = '';
+      }
+      if (msg.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
     }
     ref.invalidate(shelfBooksProvider);
   }

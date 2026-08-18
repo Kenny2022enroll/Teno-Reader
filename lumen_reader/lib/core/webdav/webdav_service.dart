@@ -201,6 +201,9 @@ class WebDAVService {
     String remoteName,
   ) async {
     try {
+      // Ensure both the root folder and the /books subfolder exist; if
+      // /LumenReader is missing, MKCOL on /LumenReader/books would 409.
+      await _ensureRemoteDir('');
       await _ensureRemoteDir('/books');
       final file = File(localFilePath);
       final stream = file.openRead();
