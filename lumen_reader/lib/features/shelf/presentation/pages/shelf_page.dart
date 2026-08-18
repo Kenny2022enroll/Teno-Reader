@@ -371,7 +371,8 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
           // addBookFromFile de-dupes by file path and returns the existing
           // record for a duplicate. Treat "addedAt within a few seconds of
           // importStart" as a freshly created record.
-          if (book.addedAt.isAfter(importStart.subtract(const Duration(seconds: 1)))) {
+          if (book.addedAt
+              .isAfter(importStart.subtract(const Duration(seconds: 1)))) {
             added++;
           } else {
             skipped++;
@@ -396,7 +397,8 @@ class _ShelfPageState extends ConsumerState<ShelfPage> {
         msg = '';
       }
       if (msg.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
       }
     }
     ref.invalidate(shelfBooksProvider);
