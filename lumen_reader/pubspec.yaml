@@ -1,11 +1,11 @@
 name: lumen_reader
 description: A cross-platform reading app with Apple HIG-inspired design.
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.0-rc.1+1
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
-  flutter: ">=3.22.0"
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
 
 dependencies:
   flutter:

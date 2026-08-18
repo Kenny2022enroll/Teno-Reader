@@ -45,6 +45,15 @@ class BookRepositoryImpl implements BookRepository {
     String? title,
     String? author,
   }) async {
+    // De-dupe: if a book with the same on-disk path is already on the
+    // shelf, return the existing record rather than creating a duplicate.
+    final canonical = _canonicalizePath(filePath);
+    for (final existing in _storage.books.values) {
+      if (_canonicalizePath(existing.filePath) == canonical) {
+        return existing;
+      }
+    }
+
     final info = await _extractMetadata(filePath);
     final book = BookEntity(
       id: _uuid.v4(),
@@ -59,6 +68,18 @@ class BookRepositoryImpl implements BookRepository {
     );
     await _storage.saveBook(book);
     return book;
+  }
+
+  /// Lower-case + trailing-slash-stripped comparison so the same file path
+  /// imported twice (e.g. once with a trailing slash, once without, or
+  /// different case on case-insensitive filesystems) is treated as the
+  /// same book.
+  String _canonicalizePath(String path) {
+    var p = path.trim();
+    if (p.endsWith('/') || p.endsWith('\\')) {
+      p = p.substring(0, p.length - 1);
+    }
+    return p.toLowerCase();
   }
 
   Future<BookInfo> _extractMetadata(String path) async {

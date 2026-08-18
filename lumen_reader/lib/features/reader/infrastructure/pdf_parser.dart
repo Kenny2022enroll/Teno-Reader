@@ -63,19 +63,10 @@ class PdfParser {
       return tmpPath;
     }
 
-    try {
-      final bytes = File(filePath).readAsBytesSync();
-      final document = PdfDocument(inputBytes: bytes);
-      try {
-        if (document.pages.count > 0) {
-          // ignore: unused_local_variable
-          final page = document.pages[0];
-        }
-      } finally {
-        document.dispose();
-      }
-    } catch (_) {}
-
+    // syncfusion_flutter_pdf does not ship a page rasterizer; rendering a
+    // PDF page to a PNG requires syncfusion_flutter_pdfviewer. Until that
+    // dependency is added, fall back to a deterministic branded cover so
+    // the shelf grid still shows a visual affordance for every PDF.
     return _generateFallbackCover(tmpPath);
   }
 

@@ -127,13 +127,23 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   final List<double> _chapterOffsets = [];
   int _currentChapter = 0;
   double _currentProgress = 0;
-  final bool _showControls = true;
+  bool _showControls = true;
   bool _isPlayingTts = false;
   bool _isLoading = true;
   ReadingProgress? _savedProgress;
   bool _needsPositionRestore = false;
+  int _restoreAttempts = 0;
+  // Cached state captured before dispose so the async save can complete
+  // even after the widget is gone.
+  int _lastScrollOffset = 0;
+  String _lastChapterId = '0:';
 
   Map<String, String> _epubImagePaths = {};
+
+  /// Currently selected text within the chapter body, captured via
+  /// SelectionArea.onSelectionChanged. Used by the highlight context menu
+  /// so the user's actual selection (not a placeholder) is stored.
+  SelectedContent? _currentSelection;
 
   @override
   void initState() {
@@ -146,6 +156,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   @override
   void dispose() {
+    // Capture the latest scroll position synchronously so the async save
+    // triggered here does not touch an already-disposed controller.
+    if (_scrollCtrl.hasClients) {
+      _lastScrollOffset = _scrollCtrl.offset.toInt();
+    }
+    // Schedule the final save with cached state — do not await (dispose
+    // must be synchronous), but the data has been snapshotted above.
     _autoSaveProgress(force: true);
     _scrollCtrl.dispose();
     _pageCtrl.dispose();
@@ -154,7 +171,19 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   }
 
   Future<void> _initTts() async {
-    await _tts.setLanguage('en-US');
+    // Pick a language that matches the (mostly Chinese) reading content.
+    // Fall back to the system default / en-US when Chinese TTS is unavailable.
+    final langs = await _tts.getLanguages ?? <String>[];
+    const preferred = ['zh-CN', 'zh-TW', 'zh-HK'];
+    String picked = 'en-US';
+    for (final p in preferred) {
+      if (langs.any((l) => l.toLowerCase() == p.toLowerCase())) {
+        picked = p;
+        break;
+      }
+    }
+    await _tts.setLanguage(picked);
+    await _tts.setSpeechRate(0.5);
     _tts.setCompletionHandler(_onTtsComplete);
   }
 
@@ -268,21 +297,20 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   void _restorePosition() {
     final saved = _savedProgress;
     if (saved == null || !mounted) return;
+    _restoreAttempts++;
     try {
       final s = ref.read(readerSettingsProvider).valueOrNull;
       final usePageView =
           s?.pageTurnStyle == 'curl' || s?.pageTurnStyle == 'slide';
-      if (usePageView && _pageCtrl.hasClients) {
-        _pageCtrl.jumpToPage(_currentChapter);
-        // Within-page scroll restoration: for PageView, each page has its own
-        // scroll context, so we just set chapter. Progress % can be applied
-        // on next frame for the current page's scroll.
-        Future.delayed(const Duration(milliseconds: 50), () {
-          if (!mounted) return;
-          // In PageView mode we approximate: jump page's inner scroll
-          // by progress percentage of estimated max (since we can't access
-          // the inner SingleChildScrollView's controller directly here).
-        });
+      if (usePageView) {
+        if (_pageCtrl.hasClients) {
+          _pageCtrl.jumpToPage(_currentChapter);
+        } else if (_restoreAttempts < 8) {
+          // PageView not yet attached — retry on the next frame, but bound
+          // the number of attempts so we never recurse forever.
+          WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
+          return;
+        }
       } else if (_scrollCtrl.hasClients) {
         final max = _scrollCtrl.position.maxScrollExtent;
         // Prefer saved absolute scrollOffset if plausible; else use percentage.
@@ -294,9 +322,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
           target = _currentProgress * max;
         }
         _scrollCtrl.jumpTo(target.clamp(0.0, max));
-      } else {
-        // Controller still not attached — try one more frame
+      } else if (_restoreAttempts < 8) {
+        // ScrollController still not attached — try one more frame, but bound.
         WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
+        return;
       }
     } catch (_) {}
     _needsPositionRestore = false;
@@ -353,38 +382,47 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     }
     _lastSave = now;
 
-    final bookAsync = ref.read(readerBookProvider(widget.bookId));
-    final book = bookAsync.valueOrNull;
-    if (book == null) return;
-
-    // Encode chapter as "index:title" so we can restore by index reliably.
-    final chapter = _chapters.isNotEmpty && _currentChapter < _chapters.length
-        ? '$_currentChapter:${_chapters[_currentChapter]}'
-        : '0:';
-
-    int scrollOffset = 0;
+    // Cache snapshot synchronously so a subsequent dispose() cannot pull
+    // the rug out from under the awaited save below.
     final s = ref.read(readerSettingsProvider).valueOrNull;
     final usePageView =
         s?.pageTurnStyle == 'curl' || s?.pageTurnStyle == 'slide';
+
+    final chapter = _chapters.isNotEmpty && _currentChapter < _chapters.length
+        ? '$_currentChapter:${_chapters[_currentChapter]}'
+        : '0:';
+    _lastChapterId = chapter;
+
+    int scrollOffset;
+    int wordsRead;
     if (usePageView) {
       // For PageView mode, compute an aggregate offset: chapter * 10000 + %
       scrollOffset = _currentChapter * 10000 +
           (_currentProgress * 10000).round().clamp(0, 9999);
+      wordsRead = _currentChapter * 500 + (_currentProgress * 500).round();
     } else if (_scrollCtrl.hasClients) {
       scrollOffset = _scrollCtrl.offset.toInt();
+      wordsRead = _scrollCtrl.offset ~/ 20 + _currentChapter * 500;
+      _lastScrollOffset = scrollOffset;
+    } else {
+      // Controller already disposed (e.g., during dispose()): use cached.
+      scrollOffset = _lastScrollOffset;
+      wordsRead = _lastScrollOffset ~/ 20 + _currentChapter * 500;
     }
+
+    final bookAsync = ref.read(readerBookProvider(widget.bookId));
+    final book = bookAsync.valueOrNull;
+    if (book == null) return;
 
     final repo = ref.read(progressRepositoryProvider);
     try {
       await repo.saveProgress(
         ReadingProgress(
           bookId: book.id,
-          chapterId: chapter,
+          chapterId: _lastChapterId,
           progress: _currentProgress,
           scrollOffset: scrollOffset,
-          totalWordsRead:
-              (_scrollCtrl.hasClients ? _scrollCtrl.offset ~/ 20 : 0) +
-                  _currentChapter * 500,
+          totalWordsRead: wordsRead,
           updatedAt: now,
         ),
       );
@@ -416,7 +454,14 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
             }
             return Stack(
               children: [
-                _buildReaderSurface(book, settingsAsync.valueOrNull),
+                GestureDetector(
+                  // Tap on the chapter surface (without drag) toggles the
+                  // reading chrome. The SelectionArea inside still wins
+                  // long-press / drag gestures for text selection.
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => setState(() => _showControls = !_showControls),
+                  child: _buildReaderSurface(book, settingsAsync.valueOrNull),
+                ),
                 _buildTopBar(book, settingsAsync.valueOrNull),
                 _buildBottomBar(book, settingsAsync.valueOrNull),
                 if (_isPlayingTts) _buildTtsOverlay(book),
@@ -573,26 +618,51 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 12, top: 16),
-          child: SelectionArea(
-            child: Text(
-              '第 ${chapterIndex + 1} 章 · ${_chapters[chapterIndex]}',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ).copyWith(color: textColor),
-            ),
+          child: Text(
+            '第 ${chapterIndex + 1} 章 · ${_chapters[chapterIndex]}',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ).copyWith(color: textColor),
           ),
         ),
-        GestureDetector(
-          onLongPressStart: (details) {
-            _showHighlightMenu(book, chapterIndex, details.globalPosition);
+        // Note: a single SelectionArea wraps the chapter body so the user
+        // can select text via the native long-press + drag gesture; the
+        // GestureDetector-on-SelectionArea pattern from earlier swallowed
+        // the selection gesture, making highlights impossible to create.
+        SelectionArea(
+          onSelectionChanged: (selection) {
+            _currentSelection = selection;
           },
-          child: SelectionArea(
-            child: RichText(
-              textWidthBasis: TextWidthBasis.longestLine,
-              text: TextSpan(
-                children: _parseContentTokens(content, textColor, s),
-              ),
+          contextMenuBuilder: (context, state) {
+            final text = state.selectedContent?.plainText ?? '';
+            return AdaptiveTextSelectionToolbar.buttonItems(
+              anchors: state.contextMenuAnchors,
+              buttonItems: [
+                ...state.contextMenuButtonItems,
+                if (text.isNotEmpty)
+                  ContextMenuButtonItem(
+                    label: '高亮',
+                    onPressed: () {
+                      ContextMenuController.remove();
+                      _showHighlightMenu(book, chapterIndex, text);
+                    },
+                  ),
+                if (text.isNotEmpty)
+                  ContextMenuButtonItem(
+                    label: '书签',
+                    onPressed: () {
+                      ContextMenuController.remove();
+                      _addBookmark(snippet: text);
+                    },
+                  ),
+              ],
+            );
+          },
+          child: RichText(
+            textWidthBasis: TextWidthBasis.longestLine,
+            text: TextSpan(
+              children: _parseContentTokens(content, textColor, s),
             ),
           ),
         ),
@@ -857,16 +927,20 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
-  Future<void> _addBookmark() async {
+  Future<void> _addBookmark({String? snippet}) async {
     final bookAsync = ref.read(readerBookProvider(widget.bookId));
     final book = bookAsync.valueOrNull;
     if (book == null) return;
     final repo = ref.read(progressRepositoryProvider);
+    // Prefer the captured selection; otherwise approximate the visible
+    // snippet from the current chapter content around the scroll offset so
+    // the user has *some* context when jumping back to this bookmark.
+    final snippetText = snippet ?? _approximateVisibleSnippet();
     final bm = await repo.addBookmark(
       bookId: book.id,
       chapterId: _chapters[_currentChapter],
       scrollOffset: _scrollCtrl.hasClients ? _scrollCtrl.offset.toInt() : 0,
-      snippet: '示例片段...',
+      snippet: snippetText,
     );
     if (mounted) {
       ScaffoldMessenger.of(
@@ -875,7 +949,23 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     }
   }
 
-  void _showHighlightMenu(BookEntity book, int chapterIndex, Offset pos) {
+  /// Rough visible-text snippet for bookmarks added without an explicit
+  /// selection. Picks ~40 chars around the current scroll offset.
+  String _approximateVisibleSnippet() {
+    if (_chapterContents.isEmpty || _currentChapter >= _chapterContents.length) {
+      return '书签';
+    }
+    final content = _chapterContents[_currentChapter];
+    final offset = (_scrollCtrl.hasClients ? _scrollCtrl.offset.toInt() : 0)
+        .clamp(0, content.length);
+    final start = (offset - 20).clamp(0, content.length);
+    final end = (offset + 20).clamp(0, content.length);
+    final raw = content.substring(start, end).replaceAll(RegExp(r'\s+'), ' ').trim();
+    return raw.isEmpty ? '书签' : raw;
+  }
+
+  void _showHighlightMenu(BookEntity book, int chapterIndex, String selectedText) {
+    final safeText = selectedText.isEmpty ? '（空选区）' : selectedText;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -891,6 +981,13 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
               '高亮颜色',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
             ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              safeText.length > 60 ? '${safeText.substring(0, 60)}…' : safeText,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: AppSpacing.md),
             Wrap(
               spacing: AppSpacing.sm,
@@ -903,9 +1000,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                     await repo.addHighlight(
                       bookId: book.id,
                       chapterId: _chapters[chapterIndex],
-                      selectedText: '当前段落',
+                      selectedText: selectedText,
                       startOffset: 0,
-                      endOffset: 0,
+                      endOffset: selectedText.length,
                       color: c,
                     );
                     if (mounted) {
@@ -1011,9 +1108,126 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
     );
   }
 
-  Widget _buildHighlightList() => const _PlaceholderList(icon: Icons.highlight);
-  Widget _buildAnnotationList() => const _PlaceholderList(icon: Icons.notes);
-  Widget _buildBookmarkList() => const _PlaceholderList(icon: Icons.bookmark);
+  Widget _buildHighlightList() {
+    return FutureBuilder<List<Highlight>>(
+      future: ref.read(progressRepositoryProvider).fetchHighlights(widget.bookId),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final items = snap.data!;
+        if (items.isEmpty) {
+          return const _PlaceholderList(icon: Icons.highlight);
+        }
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const ClampingScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, i) {
+            final h = items[i];
+            return ListTile(
+              leading: _HighlightColorDot(color: h.color),
+              title: Text(
+                h.selectedText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(h.chapterId),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: () async {
+                  await ref
+                      .read(progressRepositoryProvider)
+                      .deleteHighlight(h.id);
+                  if (mounted) setState(() {});
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAnnotationList() {
+    return FutureBuilder<List<Annotation>>(
+      future: ref.read(progressRepositoryProvider).fetchAnnotations(widget.bookId),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final items = snap.data!;
+        if (items.isEmpty) {
+          return const _PlaceholderList(icon: Icons.notes);
+        }
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const ClampingScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, i) {
+            final a = items[i];
+            return ListTile(
+              title: Text(a.note),
+              subtitle: Text(a.anchorText),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: () async {
+                  await ref
+                      .read(progressRepositoryProvider)
+                      .deleteAnnotation(a.id);
+                  if (mounted) setState(() {});
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBookmarkList() {
+    return FutureBuilder<List<Bookmark>>(
+      future: ref.read(progressRepositoryProvider).fetchBookmarks(widget.bookId),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final items = snap.data!;
+        if (items.isEmpty) {
+          return const _PlaceholderList(icon: Icons.bookmark);
+        }
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const ClampingScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, i) {
+            final b = items[i];
+            return ListTile(
+              leading: const Icon(Icons.bookmark, size: 20),
+              title: Text(
+                b.snippet,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(b.chapterId),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: () async {
+                  await ref
+                      .read(progressRepositoryProvider)
+                      .deleteBookmark(b.id);
+                  if (mounted) setState(() {});
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildTypographyPanel() {
     final s = ref.watch(readerSettingsProvider).valueOrNull;
@@ -1091,6 +1305,27 @@ class _PlaceholderList extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _HighlightColorDot extends StatelessWidget {
+  const _HighlightColorDot({required this.color});
+  final String color;
+
+  @override
+  Widget build(BuildContext context) {
+    const mapping = {
+      'yellow': AppPalette.highlightYellow,
+      'green': AppPalette.highlightGreen,
+      'blue': AppPalette.highlightBlue,
+      'pink': AppPalette.highlightPink,
+    };
+    final c = mapping[color] ?? Colors.grey.shade300;
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(color: c, shape: BoxShape.circle),
     );
   }
 }

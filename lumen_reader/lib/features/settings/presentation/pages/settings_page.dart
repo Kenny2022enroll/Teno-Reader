@@ -455,7 +455,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ListTile(
                     leading: Icon(Icons.info_outline),
                     title: Text('Lumen Reader'),
-                    subtitle: Text('v1.0.0 · 跨平台阅读'),
+                    subtitle: Text('v1.0.0-rc.1 · 跨平台阅读'),
                   ),
                 ],
               ),

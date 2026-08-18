@@ -72,14 +72,12 @@ class LumenApp extends ConsumerWidget {
         scrollbars: false,
       ),
       builder: (context, child) {
-        // Enforce safe area and platform-level transitions
-        return GestureDetector(
-          child: MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: TextScaler.noScaling),
-            child: child ?? const SizedBox.shrink(),
-          ),
-        );
+        // Honour the OS-level text scaler (accessibility / Dynamic Type).
+        // The previous implementation hard-coded TextScaler.noScaling, which
+        // silently disabled platform text scaling even though the README
+        // advertises "dynamic type / large text" support. Removing that
+        // override lets users with vision needs actually scale the UI.
+        return child ?? const SizedBox.shrink();
       },
     );
   }
