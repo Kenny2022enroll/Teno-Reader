@@ -143,7 +143,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   /// Currently selected text within the chapter body, captured via
   /// SelectionArea.onSelectionChanged. Used by the highlight context menu
   /// so the user's actual selection (not a placeholder) is stored.
-  SelectedContent? _currentSelection;
+  String _currentSelection = '';
 
   @override
   void initState() {
@@ -634,10 +634,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         // the selection gesture, making highlights impossible to create.
         SelectionArea(
           onSelectionChanged: (selection) {
-            _currentSelection = selection;
+            _currentSelection = selection.plainText;
           },
           contextMenuBuilder: (context, state) {
-            final text = state.selectedContent?.plainText ?? '';
+            final text = _currentSelection;
             return AdaptiveTextSelectionToolbar.buttonItems(
               anchors: state.contextMenuAnchors,
               buttonItems: [
@@ -646,7 +646,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   ContextMenuButtonItem(
                     label: '高亮',
                     onPressed: () {
-                      ContextMenuController.remove();
+                      state.contextMenuController.remove();
                       _showHighlightMenu(book, chapterIndex, text);
                     },
                   ),
@@ -654,7 +654,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   ContextMenuButtonItem(
                     label: '书签',
                     onPressed: () {
-                      ContextMenuController.remove();
+                      state.contextMenuController.remove();
                       _addBookmark(snippet: text);
                     },
                   ),
