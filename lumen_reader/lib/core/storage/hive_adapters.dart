@@ -19,9 +19,9 @@ class BookAdapter extends TypeAdapter<BookEntity> {
       filePath: reader.readString(),
       format: reader.readString(),
       totalWords: reader.readBool() ? reader.readInt() : null,
-      addedAt: DateTime.fromMillisecondsSinceEpoch(reader.readInt()),
+      addedAt: DateTime.fromMillisecondsSinceEpoch(reader.readInt(), isUtc: true),
       lastReadAt: reader.readBool()
-          ? DateTime.fromMillisecondsSinceEpoch(reader.readInt())
+          ? DateTime.fromMillisecondsSinceEpoch(reader.readInt(), isUtc: true)
           : null,
       isPinned: reader.readBool(),
     );
@@ -60,7 +60,7 @@ class ReadingProgressAdapter extends TypeAdapter<ReadingProgress> {
         progress: r.readDouble(),
         scrollOffset: r.readInt(),
         totalWordsRead: r.readInt(),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(r.readInt(), isUtc: true),
       );
 
   @override
@@ -87,7 +87,7 @@ class HighlightAdapter extends TypeAdapter<Highlight> {
         startOffset: r.readInt(),
         endOffset: r.readInt(),
         color: r.readString(),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt(), isUtc: true),
       );
 
   @override
@@ -114,7 +114,7 @@ class BookmarkAdapter extends TypeAdapter<Bookmark> {
         chapterId: r.readString(),
         scrollOffset: r.readInt(),
         snippet: r.readString(),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt(), isUtc: true),
       );
 
   @override
@@ -140,9 +140,9 @@ class AnnotationAdapter extends TypeAdapter<Annotation> {
         anchorText: r.readString(),
         offset: r.readInt(),
         note: r.readString(),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt()),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.readInt(), isUtc: true),
         updatedAt: r.readBool()
-            ? DateTime.fromMillisecondsSinceEpoch(r.readInt())
+            ? DateTime.fromMillisecondsSinceEpoch(r.readInt(), isUtc: true)
             : null,
       );
 
