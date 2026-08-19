@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:encrypt/encrypt.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
@@ -37,7 +37,7 @@ class SyncService {
   static const String kMasterKey = 'lumen.masterKey';
 
   String? _installId;
-  Key? _masterKey;
+  encrypt.Key? _masterKey;
   bool _enabled = false;
 
   bool get isEnabled => _enabled;
@@ -46,7 +46,7 @@ class SyncService {
   /// exercising [FlutterSecureStorage] via [enable]. Lets unit tests
   /// verify the encrypt/decrypt round-trip directly.
   @visibleForTesting
-  void setMasterKeyForTesting(Key key) {
+  void setMasterKeyForTesting(encrypt.Key key) {
     _masterKey = key;
     _installId = 'test-install';
     _enabled = true;
@@ -58,11 +58,11 @@ class SyncService {
 
     final rawKey = await _storage.readSecret(kMasterKey);
     if (rawKey == null) {
-      final key = Key.fromSecureRandom(32);
+      final key = encrypt.Key.fromSecureRandom(32);
       _masterKey = key;
       await _storage.writeSecret(kMasterKey, key.base64);
     } else {
-      _masterKey = Key.fromBase64(rawKey);
+      _masterKey = encrypt.Key.fromBase64(rawKey);
     }
     _enabled = true;
   }
@@ -123,8 +123,10 @@ class SyncService {
 
   Map<String, dynamic> _encrypt(Map<String, dynamic> payload) {
     if (_masterKey == null) return payload;
-    final iv = IV.fromSecureRandom(16);
-    final encrypter = Encrypter(AES(_masterKey!, mode: AESMode.cbc));
+    final iv = encrypt.IV.fromSecureRandom(16);
+    final encrypter = encrypt.Encrypter(
+      encrypt.AES(_masterKey!, mode: encrypt.AESMode.cbc),
+    );
     // PKCS7 padding (encrypt package default) requires the plaintext to be
     // a multiple of 16 bytes; UTF-8 encoded JSON satisfies that via padding.
     final jsonStr = jsonEncode(payload);
@@ -141,9 +143,11 @@ class SyncService {
     if (data is! Map) return null;
     if (_masterKey == null) return null;
     try {
-      final iv = IV.fromBase64(data['iv'] as String);
-      final cipher = Encrypted.fromBase64(data['cipher'] as String);
-      final encrypter = Encrypter(AES(_masterKey!, mode: AESMode.cbc));
+      final iv = encrypt.IV.fromBase64(data['iv'] as String);
+      final cipher = encrypt.Encrypted.fromBase64(data['cipher'] as String);
+      final encrypter = encrypt.Encrypter(
+        encrypt.AES(_masterKey!, mode: encrypt.AESMode.cbc),
+      );
       final plain = encrypter.decrypt(cipher, iv: iv);
       final decoded = jsonDecode(plain);
       if (decoded is Map<String, dynamic>) return decoded;

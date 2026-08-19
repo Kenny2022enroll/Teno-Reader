@@ -143,7 +143,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   /// Currently selected text within the chapter body, captured via
   /// SelectionArea.onSelectionChanged. Used by the highlight context menu
   /// so the user's actual selection (not a placeholder) is stored.
-  SelectedContent? _currentSelection;
+  String _currentSelection = '';
 
   @override
   void initState() {
@@ -326,9 +326,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         _scrollCtrl.jumpTo(target.clamp(0.0, max));
       } else if (_restoreAttempts < 8) {
         // ScrollController still not attached — try one more frame, but bound.
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _restorePosition(),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
         return;
       }
     } catch (_) {}
@@ -636,10 +634,10 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         // the selection gesture, making highlights impossible to create.
         SelectionArea(
           onSelectionChanged: (selection) {
-            _currentSelection = selection;
+            _currentSelection = selection.plainText;
           },
           contextMenuBuilder: (context, state) {
-            final text = state.selectedContent?.plainText ?? '';
+            final text = _currentSelection;
             return AdaptiveTextSelectionToolbar.buttonItems(
               anchors: state.contextMenuAnchors,
               buttonItems: [
@@ -648,7 +646,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   ContextMenuButtonItem(
                     label: '高亮',
                     onPressed: () {
-                      ContextMenuController.remove();
+                      state.contextMenuController.remove();
                       _showHighlightMenu(book, chapterIndex, text);
                     },
                   ),
@@ -656,7 +654,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   ContextMenuButtonItem(
                     label: '书签',
                     onPressed: () {
-                      ContextMenuController.remove();
+                      state.contextMenuController.remove();
                       _addBookmark(snippet: text);
                     },
                   ),
@@ -965,10 +963,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         .clamp(0, content.length);
     final start = (offset - 20).clamp(0, content.length);
     final end = (offset + 20).clamp(0, content.length);
-    final raw = content
-        .substring(start, end)
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    final raw =
+        content.substring(start, end).replaceAll(RegExp(r'\s+'), ' ').trim();
     return raw.isEmpty ? '书签' : raw;
   }
 
@@ -1122,9 +1118,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildHighlightList() {
     return FutureBuilder<List<Highlight>>(
-      future: ref
-          .read(progressRepositoryProvider)
-          .fetchHighlights(widget.bookId),
+      future:
+          ref.read(progressRepositoryProvider).fetchHighlights(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -1166,9 +1161,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildAnnotationList() {
     return FutureBuilder<List<Annotation>>(
-      future: ref
-          .read(progressRepositoryProvider)
-          .fetchAnnotations(widget.bookId),
+      future:
+          ref.read(progressRepositoryProvider).fetchAnnotations(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -1205,9 +1199,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildBookmarkList() {
     return FutureBuilder<List<Bookmark>>(
-      future: ref
-          .read(progressRepositoryProvider)
-          .fetchBookmarks(widget.bookId),
+      future:
+          ref.read(progressRepositoryProvider).fetchBookmarks(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
