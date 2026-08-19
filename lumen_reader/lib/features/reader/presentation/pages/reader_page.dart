@@ -634,7 +634,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         // the selection gesture, making highlights impossible to create.
         SelectionArea(
           onSelectionChanged: (selection) {
-            _currentSelection = selection.plainText;
+            _currentSelection = selection?.plainText ?? '';
           },
           contextMenuBuilder: (context, state) {
             final text = _currentSelection;
@@ -646,7 +646,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   ContextMenuButtonItem(
                     label: '高亮',
                     onPressed: () {
-                      state.contextMenuController.remove();
+                      state.hideToolbar();
                       _showHighlightMenu(book, chapterIndex, text);
                     },
                   ),
@@ -654,7 +654,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
                   ContextMenuButtonItem(
                     label: '书签',
                     onPressed: () {
-                      state.contextMenuController.remove();
+                      state.hideToolbar();
                       _addBookmark(snippet: text);
                     },
                   ),
