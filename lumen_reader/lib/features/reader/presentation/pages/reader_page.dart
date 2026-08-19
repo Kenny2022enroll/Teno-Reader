@@ -326,9 +326,7 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         _scrollCtrl.jumpTo(target.clamp(0.0, max));
       } else if (_restoreAttempts < 8) {
         // ScrollController still not attached — try one more frame, but bound.
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _restorePosition(),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
         return;
       }
     } catch (_) {}
