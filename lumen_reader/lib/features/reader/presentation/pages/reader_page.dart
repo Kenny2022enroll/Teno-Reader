@@ -308,7 +308,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         } else if (_restoreAttempts < 8) {
           // PageView not yet attached — retry on the next frame, but bound
           // the number of attempts so we never recurse forever.
-          WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _restorePosition(),
+          );
           return;
         }
       } else if (_scrollCtrl.hasClients) {
@@ -324,7 +326,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         _scrollCtrl.jumpTo(target.clamp(0.0, max));
       } else if (_restoreAttempts < 8) {
         // ScrollController still not attached — try one more frame, but bound.
-        WidgetsBinding.instance.addPostFrameCallback((_) => _restorePosition());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _restorePosition(),
+        );
         return;
       }
     } catch (_) {}
@@ -952,7 +956,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
   /// Rough visible-text snippet for bookmarks added without an explicit
   /// selection. Picks ~40 chars around the current scroll offset.
   String _approximateVisibleSnippet() {
-    if (_chapterContents.isEmpty || _currentChapter >= _chapterContents.length) {
+    if (_chapterContents.isEmpty ||
+        _currentChapter >= _chapterContents.length) {
       return '书签';
     }
     final content = _chapterContents[_currentChapter];
@@ -960,11 +965,18 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         .clamp(0, content.length);
     final start = (offset - 20).clamp(0, content.length);
     final end = (offset + 20).clamp(0, content.length);
-    final raw = content.substring(start, end).replaceAll(RegExp(r'\s+'), ' ').trim();
+    final raw = content
+        .substring(start, end)
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     return raw.isEmpty ? '书签' : raw;
   }
 
-  void _showHighlightMenu(BookEntity book, int chapterIndex, String selectedText) {
+  void _showHighlightMenu(
+    BookEntity book,
+    int chapterIndex,
+    String selectedText,
+  ) {
     final safeText = selectedText.isEmpty ? '（空选区）' : selectedText;
     showModalBottomSheet<void>(
       context: context,
@@ -1110,7 +1122,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildHighlightList() {
     return FutureBuilder<List<Highlight>>(
-      future: ref.read(progressRepositoryProvider).fetchHighlights(widget.bookId),
+      future: ref
+          .read(progressRepositoryProvider)
+          .fetchHighlights(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -1152,7 +1166,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildAnnotationList() {
     return FutureBuilder<List<Annotation>>(
-      future: ref.read(progressRepositoryProvider).fetchAnnotations(widget.bookId),
+      future: ref
+          .read(progressRepositoryProvider)
+          .fetchAnnotations(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -1189,7 +1205,9 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildBookmarkList() {
     return FutureBuilder<List<Bookmark>>(
-      future: ref.read(progressRepositoryProvider).fetchBookmarks(widget.bookId),
+      future: ref
+          .read(progressRepositoryProvider)
+          .fetchBookmarks(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
