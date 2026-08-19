@@ -963,10 +963,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
         .clamp(0, content.length);
     final start = (offset - 20).clamp(0, content.length);
     final end = (offset + 20).clamp(0, content.length);
-    final raw = content
-        .substring(start, end)
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    final raw =
+        content.substring(start, end).replaceAll(RegExp(r'\s+'), ' ').trim();
     return raw.isEmpty ? '书签' : raw;
   }
 
@@ -1120,9 +1118,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildHighlightList() {
     return FutureBuilder<List<Highlight>>(
-      future: ref
-          .read(progressRepositoryProvider)
-          .fetchHighlights(widget.bookId),
+      future:
+          ref.read(progressRepositoryProvider).fetchHighlights(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -1164,9 +1161,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildAnnotationList() {
     return FutureBuilder<List<Annotation>>(
-      future: ref
-          .read(progressRepositoryProvider)
-          .fetchAnnotations(widget.bookId),
+      future:
+          ref.read(progressRepositoryProvider).fetchAnnotations(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -1203,9 +1199,8 @@ class _ReaderPageState extends ConsumerState<ReaderPage> {
 
   Widget _buildBookmarkList() {
     return FutureBuilder<List<Bookmark>>(
-      future: ref
-          .read(progressRepositoryProvider)
-          .fetchBookmarks(widget.bookId),
+      future:
+          ref.read(progressRepositoryProvider).fetchBookmarks(widget.bookId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
